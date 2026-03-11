@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "78743566270",
+    "project_id": "dalelak-b6812",
+    "storage_bucket": "dalelak-b6812.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:78743566270:android:b3e8b9d099e36cc90debef",
+        "android_client_info": {
+          "package_name": "Dalelak1.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "78743566270-b4a1a707g2tid2mr45q0riqss2gp3trr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvEWqjwNMUGTziQbDgyuevQq4DYpPGQ_g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "78743566270-b4a1a707g2tid2mr45q0riqss2gp3trr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:78743566270:android:178c26981dc7f34e0debef",
+        "android_client_info": {
+          "package_name": "com.example.tour_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "78743566270-b4a1a707g2tid2mr45q0riqss2gp3trr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvEWqjwNMUGTziQbDgyuevQq4DYpPGQ_g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "78743566270-b4a1a707g2tid2mr45q0riqss2gp3trr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
