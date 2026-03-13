@@ -280,7 +280,7 @@ class ExploreView extends StatelessWidget {
                 final searchText = controller.searchText.value;
 
                 final filteredTours = toursList.where((tour) {
-                  if (isAIRecommendations && !(tour['isAIPick'] as bool)) {
+                  if (isAIRecommendations && !(tour['isAIPick'] ?? false)) {
                     return false;
                   }
                   if (isNearMe && tour['distance'] == null) {
@@ -288,10 +288,10 @@ class ExploreView extends StatelessWidget {
                   }
                   if (searchText.isNotEmpty) {
                     final query = searchText.toLowerCase();
-                    if (!(tour['title'] as String).toLowerCase().contains(
+                    if (!(tour['tourTitle'] as String).toLowerCase().contains(
                           query,
                         ) &&
-                        !(tour['location'] as String).toLowerCase().contains(
+                        !(tour['destination'] as String).toLowerCase().contains(
                           query,
                         )) {
                       return false;
@@ -652,8 +652,8 @@ class ExploreView extends StatelessWidget {
     ExploreController controller,
   ) {
     final isFavorite = tour['isFavorite'] ?? false;
-    final isAIPick = tour['isAIPick'] as bool;
-    final distance = tour['distance'] as String?;
+    final isAIPick = tour['isAIPick'] ?? false;
+    final distance = tour['distance'];
 
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
@@ -791,7 +791,7 @@ class ExploreView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  tour['title'] as String,
+                  tour['tourTitle'] ?? '',
                   style: GoogleFonts.inter(
                     color: Colors.black,
                     fontSize: 18.sp,
@@ -808,7 +808,7 @@ class ExploreView extends StatelessWidget {
                     ),
                     SizedBox(width: 4.w),
                     Text(
-                      tour['location'] as String,
+                      tour['destination'] ?? '',
                       style: GoogleFonts.inter(
                         color: const Color(0xFF666666),
                         fontSize: 14.sp,
@@ -823,7 +823,7 @@ class ExploreView extends StatelessWidget {
                     ),
                     SizedBox(width: 4.w),
                     Text(
-                      tour['duration'] as String,
+                      "${tour['durationValue']} ${tour['durationUnit']}",
                       style: GoogleFonts.inter(
                         color: const Color(0xFF666666),
                         fontSize: 14.sp,
@@ -838,7 +838,7 @@ class ExploreView extends StatelessWidget {
                     Icon(Icons.star, color: Colors.amber, size: 16.sp),
                     SizedBox(width: 4.w),
                     Text(
-                      '${tour['rating']} (${tour['reviews']})',
+                      '${tour['rating'] ?? 0} (${tour['reviews'] ?? 0})',
                       style: GoogleFonts.inter(
                         color: Colors.black,
                         fontSize: 14.sp,
@@ -852,7 +852,7 @@ class ExploreView extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      tour['price'] as String,
+                      "${tour['price']} SAR" ,
                       style: GoogleFonts.inter(
                         color: const Color(0xFF00A86B),
                         fontSize: 20.sp,
@@ -860,13 +860,13 @@ class ExploreView extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Guide: ${tour['guide'] as String}',
+                     'Guide',
                       style: GoogleFonts.inter(
-                        color: const Color(0xFF666666),
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
+                      color: const Color(0xFF666666),
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w400,
+                     ),
+                   ),
                   ],
                 ),
               ],

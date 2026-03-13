@@ -39,6 +39,9 @@ class PackagesService extends GetxService {
         'status': 'Published',
         'views': 0,
         'bookings': 0,
+        'rating': 0,
+        'reviews': 0,
+        'image': '',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
