@@ -66,6 +66,7 @@ class CreatePackageController extends GetxController {
 
   final RxString tourTitle = ''.obs;
   final RxString selectedDestination = ''.obs;
+  final RxString selectedActivityType = ''.obs;
   final RxString durationValue = '3'.obs;
   final RxString durationUnit = 'Hours'.obs;
   final RxString price = '500'.obs;
@@ -98,6 +99,7 @@ class CreatePackageController extends GetxController {
       if (packageData != null) {
         tourTitle.value = packageData['tourTitle'] as String? ?? '';
         selectedDestination.value = packageData['destination'] as String? ?? '';
+        selectedActivityType.value = packageData['activityType'] as String? ?? '';
         durationValue.value = packageData['durationValue'] as String? ?? '3';
         durationUnit.value = packageData['durationUnit'] as String? ?? 'Hours';
         price.value = packageData['price'] as String? ?? '500';
@@ -145,6 +147,19 @@ class CreatePackageController extends GetxController {
     'Madinah',
   ];
 
+  final List<String> activityTypes = [
+    'Adventure',
+    'Cultural Heritage',
+    'Nature & Wildlife',
+    'Religious',
+    'Beach',
+    'Entertainment',
+    'Historical',
+    'Photography',
+    'Food & Culinary',
+    'Relaxation',
+  ];
+
   final List<String> durationUnits = ['Hours', 'Days'];
   final List<String> questionTypes = [
     'Multiple Choice',
@@ -154,6 +169,10 @@ class CreatePackageController extends GetxController {
 
   void setDestination(String destination) {
     selectedDestination.value = destination;
+  }
+
+  void setActivityType(String activityType) {
+    selectedActivityType.value = activityType;
   }
 
   void setDurationValue(String value) {
@@ -411,6 +430,9 @@ class CreatePackageController extends GetxController {
           availableDates: selectedDates.value.isNotEmpty
               ? selectedDates.value
               : null,
+          activityType: selectedActivityType.value.isNotEmpty
+              ? selectedActivityType.value
+              : null,
           activities: activitiesData,
         );
         isLoading.value = false;
@@ -434,6 +456,9 @@ class CreatePackageController extends GetxController {
           tourDescription: tourDescription.value.trim(),
           availableDates: selectedDates.value.isNotEmpty
               ? selectedDates.value
+              : null,
+          activityType: selectedActivityType.value.isNotEmpty
+              ? selectedActivityType.value
               : null,
           activities: activitiesData,
         );

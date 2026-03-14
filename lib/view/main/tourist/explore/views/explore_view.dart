@@ -272,33 +272,7 @@ class ExploreView extends StatelessWidget {
             SizedBox(height: 16.h),
             Expanded(
               child: Obx(() {
-                final toursList = controller.tours;
-                final _ = toursList.length;
-                final isAIRecommendations =
-                    controller.isAIRecommendations.value;
-                final isNearMe = controller.isNearMe.value;
-                final searchText = controller.searchText.value;
-
-                final filteredTours = toursList.where((tour) {
-                  if (isAIRecommendations && !(tour['isAIPick'] ?? false)) {
-                    return false;
-                  }
-                  if (isNearMe && tour['distance'] == null) {
-                    return false;
-                  }
-                  if (searchText.isNotEmpty) {
-                    final query = searchText.toLowerCase();
-                    if (!(tour['tourTitle'] as String).toLowerCase().contains(
-                          query,
-                        ) &&
-                        !(tour['destination'] as String).toLowerCase().contains(
-                          query,
-                        )) {
-                      return false;
-                    }
-                  }
-                  return true;
-                }).toList();
+                final filteredTours = controller.filteredTours;
 
                 return Column(
                   children: [
@@ -432,16 +406,36 @@ class ExploreView extends StatelessWidget {
                 Navigator.pop(context);
               },
             ),
-            _buildOptionItem('AlUla', controller.selectedRegion.value, () {
-              controller.selectRegion('AlUla');
-              Navigator.pop(context);
-            }),
             _buildOptionItem('Riyadh', controller.selectedRegion.value, () {
               controller.selectRegion('Riyadh');
               Navigator.pop(context);
             }),
             _buildOptionItem('Jeddah', controller.selectedRegion.value, () {
               controller.selectRegion('Jeddah');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('AlUla', controller.selectedRegion.value, () {
+              controller.selectRegion('AlUla');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Abha', controller.selectedRegion.value, () {
+              controller.selectRegion('Abha');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Taif', controller.selectedRegion.value, () {
+              controller.selectRegion('Taif');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Dammam', controller.selectedRegion.value, () {
+              controller.selectRegion('Dammam');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Makkah', controller.selectedRegion.value, () {
+              controller.selectRegion('Makkah');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Madinah', controller.selectedRegion.value, () {
+              controller.selectRegion('Madinah');
               Navigator.pop(context);
             }),
             _buildOptionItem('Diriyah', controller.selectedRegion.value, () {
@@ -558,56 +552,122 @@ class ExploreView extends StatelessWidget {
   void _showActivityDialog(BuildContext context, ExploreController controller) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Select Activity Type',
-              style: GoogleFonts.inter(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-              ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          child: Container(
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Select Activity Type',
+                  style: GoogleFonts.inter(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 20.h),
+                _buildOptionItem(
+                  'All Activities',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('All Activities');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Adventure',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Adventure');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Cultural Heritage',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Cultural Heritage');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Nature & Wildlife',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Nature & Wildlife');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Religious',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Religious');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Beach',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Beach');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Entertainment',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Entertainment');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Historical',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Historical');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Photography',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Photography');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Food & Culinary',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Food & Culinary');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Relaxation',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Relaxation');
+                    Navigator.pop(context);
+                  },
+                ),
+                SizedBox(height: 20.h),
+              ],
             ),
-            SizedBox(height: 20.h),
-            _buildOptionItem(
-              'All Activities',
-              controller.selectedActivityType.value,
-              () {
-                controller.selectActivityType('All Activities');
-                Navigator.pop(context);
-              },
-            ),
-            _buildOptionItem(
-              'Cultural Heritage',
-              controller.selectedActivityType.value,
-              () {
-                controller.selectActivityType('Cultural Heritage');
-                Navigator.pop(context);
-              },
-            ),
-            _buildOptionItem(
-              'Adventure',
-              controller.selectedActivityType.value,
-              () {
-                controller.selectActivityType('Adventure');
-                Navigator.pop(context);
-              },
-            ),
-            _buildOptionItem(
-              'Photography',
-              controller.selectedActivityType.value,
-              () {
-                controller.selectActivityType('Photography');
-                Navigator.pop(context);
-              },
-            ),
-            SizedBox(height: 20.h),
-          ],
+          ),
         ),
       ),
     );

@@ -17,6 +17,7 @@ class PackagesService extends GetxService {
     required String maxGroupSize,
     required String tourDescription,
     String? availableDates,
+    String? activityType,
     List<Map<String, dynamic>>? activities,
   }) async {
     try {
@@ -34,6 +35,7 @@ class PackagesService extends GetxService {
         'maxGroupSize': maxGroupSize,
         'tourDescription': tourDescription,
         'availableDates': availableDates ?? '',
+        'activityType': activityType ?? '',
         'activities': activities ?? [],
         'guideId': userId,
         'status': 'Published',
@@ -66,6 +68,7 @@ class PackagesService extends GetxService {
     required String maxGroupSize,
     required String tourDescription,
     String? availableDates,
+    String? activityType,
     List<Map<String, dynamic>>? activities,
   }) async {
     try {
@@ -83,6 +86,7 @@ class PackagesService extends GetxService {
         'maxGroupSize': maxGroupSize,
         'tourDescription': tourDescription,
         'availableDates': availableDates ?? '',
+        'activityType': activityType ?? '',
         'activities': activities ?? [],
         'updatedAt': FieldValue.serverTimestamp(),
       };
