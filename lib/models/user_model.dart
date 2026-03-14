@@ -17,6 +17,7 @@ class UserModel {
   // Tourist specific fields
   final String? age;
   final String? countryOfResidence;
+  final String? city;
   final String? tripType;
   final String? travelBudget;
   final String? travelPace;
@@ -35,6 +36,7 @@ class UserModel {
     this.languagesSpoken,
     this.age,
     this.countryOfResidence,
+    this.city,
     this.tripType,
     this.travelBudget,
     this.travelPace,
@@ -58,6 +60,7 @@ class UserModel {
           : null,
       age: data['age'],
       countryOfResidence: data['countryOfResidence'],
+      city: data['city'],
       tripType: data['tripType'],
       travelBudget: data['travelBudget'],
       travelPace: data['travelPace'],

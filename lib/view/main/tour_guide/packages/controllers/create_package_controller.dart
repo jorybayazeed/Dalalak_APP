@@ -66,6 +66,8 @@ class CreatePackageController extends GetxController {
 
   final RxString tourTitle = ''.obs;
   final RxString selectedDestination = ''.obs;
+  final RxString selectedRegion = ''.obs;
+  final RxString selectedActivityType = ''.obs;
   final RxString durationValue = '3'.obs;
   final RxString durationUnit = 'Hours'.obs;
   final RxString price = '500'.obs;
@@ -98,6 +100,8 @@ class CreatePackageController extends GetxController {
       if (packageData != null) {
         tourTitle.value = packageData['tourTitle'] as String? ?? '';
         selectedDestination.value = packageData['destination'] as String? ?? '';
+        selectedRegion.value = packageData['region'] as String? ?? '';
+        selectedActivityType.value = packageData['activityType'] as String? ?? '';
         durationValue.value = packageData['durationValue'] as String? ?? '3';
         durationUnit.value = packageData['durationUnit'] as String? ?? 'Hours';
         price.value = packageData['price'] as String? ?? '500';
@@ -145,6 +149,30 @@ class CreatePackageController extends GetxController {
     'Madinah',
   ];
 
+    final List<String> regions = [
+    'Riyadh',
+    'Jeddah',
+    'AlUla',
+    'Dammam',
+    'Abha',
+    'Taif',
+    'Makkah',
+    'Madinah',
+  ];
+
+  final List<String> activityTypes = [
+    'Adventure',
+    'Cultural Heritage',
+    'Nature & Wildlife',
+    'Religious',
+    'Beach',
+    'Entertainment',
+    'Historical',
+    'Photography',
+    'Food & Culinary',
+    'Relaxation',
+  ];
+
   final List<String> durationUnits = ['Hours', 'Days'];
   final List<String> questionTypes = [
     'Multiple Choice',
@@ -154,6 +182,13 @@ class CreatePackageController extends GetxController {
 
   void setDestination(String destination) {
     selectedDestination.value = destination;
+  }
+  void setRegion(String region) {
+    selectedRegion.value = region;
+  }
+
+  void setActivityType(String value) {
+    selectedActivityType.value = value;
   }
 
   void setDurationValue(String value) {
@@ -375,6 +410,10 @@ class CreatePackageController extends GetxController {
       Get.snackbar('Error', 'Please select destination');
       return;
     }
+     if (selectedRegion.value.isEmpty) {
+      Get.snackbar('Error', 'Please select region');
+      return;
+    }
 
     if (price.value.trim().isEmpty) {
       Get.snackbar('Error', 'Please enter price');
@@ -403,6 +442,8 @@ class CreatePackageController extends GetxController {
           packageId: packageId!,
           tourTitle: tourTitle.value.trim(),
           destination: selectedDestination.value,
+          region: selectedRegion.value,
+          activityType: selectedActivityType.value,
           durationValue: durationValue.value,
           durationUnit: durationUnit.value,
           price: price.value.trim(),
@@ -415,7 +456,7 @@ class CreatePackageController extends GetxController {
         );
         isLoading.value = false;
         Get.snackbar(
-          'Success',
+          'Success', 
           'Tour package updated successfully',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: const Color(0xFF00A86B),
@@ -427,6 +468,8 @@ class CreatePackageController extends GetxController {
         await _packagesService.createPackage(
           tourTitle: tourTitle.value.trim(),
           destination: selectedDestination.value,
+           region: selectedRegion.value,
+           activityType: selectedActivityType.value,
           durationValue: durationValue.value,
           durationUnit: durationUnit.value,
           price: price.value.trim(),

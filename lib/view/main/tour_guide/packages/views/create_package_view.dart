@@ -109,6 +109,38 @@ class CreatePackageView extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 20.h),
+                       Obx(
+                        () => _buildDropdownField(
+                          label: 'Region *',
+                          hintText: 'Select region',
+                          value: controller.selectedRegion.value.isEmpty
+                              ? null
+                              : controller.selectedRegion.value,
+                          items: controller.regions,
+                          onChanged: (value) {
+                            if (value != null) {
+                              controller.setRegion(value);
+                            }
+                          },
+                        ),
+                      ),
+                       SizedBox(height: 20.h),
+                      Obx(
+                        () => _buildDropdownField(
+                          label: 'Activity Type *',
+                          hintText: 'Select activity type',
+                          value: controller.selectedActivityType.value.isEmpty
+                              ? null
+                              : controller.selectedActivityType.value,
+                          items: controller.activityTypes,
+                          onChanged: (value) {
+                            if (value != null) {
+                              controller.setActivityType(value);
+                            }
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 20.h),
                       Row(
                         children: [
                           Text(

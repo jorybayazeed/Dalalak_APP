@@ -8,6 +8,7 @@ import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/services/storage_service.dart';
 import 'package:tour_app/services/user_service.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
+import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
 import 'package:tour_app/view/onboarding/views/onboarding_view.dart';
 
@@ -20,6 +21,7 @@ void main() async {
   Get.put(AuthService(), permanent: true);
   Get.put(UserService(), permanent: true);
   Get.put(PackagesService(), permanent: true);
+  Get.put(TouristHomeController(), permanent: true);
   runApp(const MyApp());
 }
 
