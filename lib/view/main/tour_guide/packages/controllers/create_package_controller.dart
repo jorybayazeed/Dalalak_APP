@@ -80,6 +80,8 @@ class CreatePackageController extends GetxController {
   final String? packageId;
   final TextEditingController tourTitleController = TextEditingController();
   final TextEditingController tourDescriptionController = TextEditingController();
+  final TextEditingController priceController = TextEditingController(text: '500');
+  final TextEditingController maxGroupSizeController = TextEditingController(text: '15');
 
   CreatePackageController({this.packageId});
 
@@ -97,15 +99,22 @@ class CreatePackageController extends GetxController {
     try {
       final packageData = await _packagesService.getPackage(packageId!);
       if (packageData != null) {
+        final priceValue = packageData['price'] as String? ?? '500';
+        final maxGroupSizeValue = packageData['maxGroupSize'] as String? ?? '15';
+        
         tourTitle.value = packageData['tourTitle'] as String? ?? '';
+        tourTitleController.text = tourTitle.value;
         selectedDestination.value = packageData['destination'] as String? ?? '';
         selectedActivityType.value = packageData['activityType'] as String? ?? '';
         durationValue.value = packageData['durationValue'] as String? ?? '3';
         durationUnit.value = packageData['durationUnit'] as String? ?? 'Hours';
-        price.value = packageData['price'] as String? ?? '500';
-        maxGroupSize.value = packageData['maxGroupSize'] as String? ?? '15';
+        price.value = priceValue;
+        priceController.text = priceValue;
+        maxGroupSize.value = maxGroupSizeValue;
+        maxGroupSizeController.text = maxGroupSizeValue;
         selectedDates.value = packageData['availableDates'] as String? ?? '';
         tourDescription.value = packageData['tourDescription'] as String? ?? '';
+        tourDescriptionController.text = tourDescription.value;
 
         if (packageData['activities'] != null) {
           final activitiesList = packageData['activities'] as List<dynamic>?;
@@ -185,10 +194,12 @@ class CreatePackageController extends GetxController {
 
   void setPrice(String value) {
     price.value = value;
+    priceController.text = value;
   }
 
   void setMaxGroupSize(String value) {
     maxGroupSize.value = value;
+    maxGroupSizeController.text = value;
   }
 
   void setSelectedDates(String dates) {
@@ -477,5 +488,17 @@ class CreatePackageController extends GetxController {
       isLoading.value = false;
       Get.snackbar('Error', e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  @override
+  void onClose() {
+    tourTitleController.dispose();
+    tourDescriptionController.dispose();
+    priceController.dispose();
+    maxGroupSizeController.dispose();
+    for (var controller in correctAnswerControllers) {
+      controller.dispose();
+    }
+    super.onClose();
   }
 }
