@@ -6,36 +6,39 @@ import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dar
 class TourActivity {
   String id;
   String activityName;
-  String activityType;
   String xPosition;
   String yPosition;
   String question;
   String questionType;
   List<String> answerOptions;
   String correctAnswer;
+  
+
+  
+ 
 
   TourActivity({
     required this.id,
     this.activityName = '',
-    this.activityType = '',
     this.xPosition = '50',
     this.yPosition = '50',
     this.question = '',
     this.questionType = 'Multiple Choice',
     this.answerOptions = const ['', '', '', ''],
     this.correctAnswer = '',
+    
   });
 
   Map<String, dynamic> toMap() {
     return {
       'activityName': activityName,
-      'activityType': activityType,
       'xPosition': xPosition,
       'yPosition': yPosition,
       'question': question,
       'questionType': questionType,
       'answerOptions': answerOptions,
       'correctAnswer': correctAnswer,
+      
     };
   }
 
@@ -43,17 +46,17 @@ class TourActivity {
     return TourActivity(
       id: id,
       activityName: map['activityName'] as String? ?? '',
-      activityType: map['activityType'] as String? ?? '',
       xPosition: map['xPosition'] as String? ?? '50',
       yPosition: map['yPosition'] as String? ?? '50',
       question: map['question'] as String? ?? '',
       questionType: map['questionType'] as String? ?? 'Multiple Choice',
       answerOptions:
           (map['answerOptions'] as List<dynamic>?)
-                  ?.map((e) => e.toString())
-                  .toList() ??
-              ['', '', '', ''],
+              ?.map((e) => e.toString())
+              .toList() ??
+          ['', '', '', ''],
       correctAnswer: map['correctAnswer'] ?? '',
+      
     );
   }
 }
@@ -63,7 +66,6 @@ class CreatePackageController extends GetxController {
 
   final RxString tourTitle = ''.obs;
   final RxString selectedDestination = ''.obs;
-  final RxString selectedRegion = ''.obs;
   final RxString selectedActivityType = ''.obs;
   final RxString durationValue = '3'.obs;
   final RxString durationUnit = 'Hours'.obs;
@@ -78,6 +80,8 @@ class CreatePackageController extends GetxController {
   final String? packageId;
   final TextEditingController tourTitleController = TextEditingController();
   final TextEditingController tourDescriptionController = TextEditingController();
+  final TextEditingController priceController = TextEditingController(text: '500');
+  final TextEditingController maxGroupSizeController = TextEditingController(text: '15');
 
   CreatePackageController({this.packageId});
 
@@ -95,16 +99,22 @@ class CreatePackageController extends GetxController {
     try {
       final packageData = await _packagesService.getPackage(packageId!);
       if (packageData != null) {
+        final priceValue = packageData['price'] as String? ?? '500';
+        final maxGroupSizeValue = packageData['maxGroupSize'] as String? ?? '15';
+        
         tourTitle.value = packageData['tourTitle'] as String? ?? '';
+        tourTitleController.text = tourTitle.value;
         selectedDestination.value = packageData['destination'] as String? ?? '';
-        selectedRegion.value = packageData['region'] as String? ?? '';
         selectedActivityType.value = packageData['activityType'] as String? ?? '';
         durationValue.value = packageData['durationValue'] as String? ?? '3';
         durationUnit.value = packageData['durationUnit'] as String? ?? 'Hours';
-        price.value = packageData['price'] as String? ?? '500';
-        maxGroupSize.value = packageData['maxGroupSize'] as String? ?? '15';
+        price.value = priceValue;
+        priceController.text = priceValue;
+        maxGroupSize.value = maxGroupSizeValue;
+        maxGroupSizeController.text = maxGroupSizeValue;
         selectedDates.value = packageData['availableDates'] as String? ?? '';
         tourDescription.value = packageData['tourDescription'] as String? ?? '';
+        tourDescriptionController.text = tourDescription.value;
 
         if (packageData['activities'] != null) {
           final activitiesList = packageData['activities'] as List<dynamic>?;
@@ -146,17 +156,6 @@ class CreatePackageController extends GetxController {
     'Madinah',
   ];
 
-    final List<String> regions = [
-    'Riyadh',
-    'Jeddah',
-    'AlUla',
-    'Dammam',
-    'Abha',
-    'Taif',
-    'Makkah',
-    'Madinah',
-  ];
-
   final List<String> activityTypes = [
     'Adventure',
     'Cultural Heritage',
@@ -180,12 +179,9 @@ class CreatePackageController extends GetxController {
   void setDestination(String destination) {
     selectedDestination.value = destination;
   }
-  void setRegion(String region) {
-    selectedRegion.value = region;
-  }
 
-  void setActivityType(String value) {
-    selectedActivityType.value = value;
+  void setActivityType(String activityType) {
+    selectedActivityType.value = activityType;
   }
 
   void setDurationValue(String value) {
@@ -198,10 +194,12 @@ class CreatePackageController extends GetxController {
 
   void setPrice(String value) {
     price.value = value;
+    priceController.text = value;
   }
 
   void setMaxGroupSize(String value) {
     maxGroupSize.value = value;
+    maxGroupSizeController.text = value;
   }
 
   void setSelectedDates(String dates) {
@@ -300,23 +298,6 @@ class CreatePackageController extends GetxController {
     }
   }
 
- void updateActivityType(int index, String value) {
-  final current = activities[index];
-
-  final updated = TourActivity(
-    id: current.id,
-    activityName: current.activityName,
-    activityType: value,
-    xPosition: current.xPosition,
-    yPosition: current.yPosition,
-    question: current.question,
-    questionType: current.questionType,
-    answerOptions: List<String>.from(current.answerOptions),
-    correctAnswer: current.correctAnswer,
-  );
-
-  activities[index] = updated;
-}
   void updateActivityXPosition(int index, String value) {
     if (index >= 0 && index < activities.length) {
       activities[index].xPosition = value;
@@ -328,7 +309,6 @@ class CreatePackageController extends GetxController {
       activities[index].yPosition = value;
     }
   }
-
 
   void updateActivityQuestion(int index, String value) {
     if (index >= 0 && index < activities.length) {
@@ -425,10 +405,6 @@ class CreatePackageController extends GetxController {
       Get.snackbar('Error', 'Please select destination');
       return;
     }
-     if (selectedRegion.value.isEmpty) {
-      Get.snackbar('Error', 'Please select region');
-      return;
-    }
 
     if (price.value.trim().isEmpty) {
       Get.snackbar('Error', 'Please enter price');
@@ -457,8 +433,6 @@ class CreatePackageController extends GetxController {
           packageId: packageId!,
           tourTitle: tourTitle.value.trim(),
           destination: selectedDestination.value,
-          region: selectedRegion.value,
-          activityType: selectedActivityType.value,
           durationValue: durationValue.value,
           durationUnit: durationUnit.value,
           price: price.value.trim(),
@@ -467,11 +441,14 @@ class CreatePackageController extends GetxController {
           availableDates: selectedDates.value.isNotEmpty
               ? selectedDates.value
               : null,
+          activityType: selectedActivityType.value.isNotEmpty
+              ? selectedActivityType.value
+              : null,
           activities: activitiesData,
         );
         isLoading.value = false;
         Get.snackbar(
-          'Success', 
+          'Success',
           'Tour package updated successfully',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: const Color(0xFF00A86B),
@@ -483,8 +460,6 @@ class CreatePackageController extends GetxController {
         await _packagesService.createPackage(
           tourTitle: tourTitle.value.trim(),
           destination: selectedDestination.value,
-           region: selectedRegion.value,
-           activityType: selectedActivityType.value,
           durationValue: durationValue.value,
           durationUnit: durationUnit.value,
           price: price.value.trim(),
@@ -492,6 +467,9 @@ class CreatePackageController extends GetxController {
           tourDescription: tourDescription.value.trim(),
           availableDates: selectedDates.value.isNotEmpty
               ? selectedDates.value
+              : null,
+          activityType: selectedActivityType.value.isNotEmpty
+              ? selectedActivityType.value
               : null,
           activities: activitiesData,
         );
@@ -510,5 +488,17 @@ class CreatePackageController extends GetxController {
       isLoading.value = false;
       Get.snackbar('Error', e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  @override
+  void onClose() {
+    tourTitleController.dispose();
+    tourDescriptionController.dispose();
+    priceController.dispose();
+    maxGroupSizeController.dispose();
+    for (var controller in correctAnswerControllers) {
+      controller.dispose();
+    }
+    super.onClose();
   }
 }

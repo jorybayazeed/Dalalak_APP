@@ -19,6 +19,7 @@ class PackagesService extends GetxService {
     required String tourDescription,
     String? activityType,
     String? availableDates,
+    String? activityType,
     List<Map<String, dynamic>>? activities,
   }) async {
     try {
@@ -38,6 +39,7 @@ class PackagesService extends GetxService {
         'tourDescription': tourDescription,
         'activityType': activityType ?? '',
         'availableDates': availableDates ?? '',
+        'activityType': activityType ?? '',
         'activities': activities ?? [],
         'guideId': userId,
         'status': 'Published',
@@ -72,6 +74,7 @@ class PackagesService extends GetxService {
     required String tourDescription,
     String? activityType,
     String? availableDates,
+    String? activityType,
     List<Map<String, dynamic>>? activities,
   }) async {
     try {
@@ -91,6 +94,7 @@ class PackagesService extends GetxService {
         'tourDescription': tourDescription,
         'activityType': activityType ?? '',
         'availableDates': availableDates ?? '',
+        'activityType': activityType ?? '',
         'activities': activities ?? [],
         'updatedAt': FieldValue.serverTimestamp(),
       };
@@ -185,4 +189,32 @@ class PackagesService extends GetxService {
         return packages;
       });
 }
+
+  Future<List<Map<String, dynamic>>> getAllPackages() async {
+    try {
+      final snapshot = await _firestore
+          .collection('tourPackages')
+          .where('status', isEqualTo: 'Published')
+          .get();
+
+      final packages = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {'id': doc.id, ...data};
+      }).toList();
+
+      packages.sort((a, b) {
+        final aCreated = a['createdAt'] as Timestamp?;
+        final bCreated = b['createdAt'] as Timestamp?;
+        if (aCreated == null && bCreated == null) return 0;
+        if (aCreated == null) return 1;
+        if (bCreated == null) return -1;
+        return bCreated.compareTo(aCreated);
+      });
+
+      return packages;
+    } catch (e) {
+      print('Error fetching all packages: $e');
+      return [];
+    }
+  }
 }

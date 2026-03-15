@@ -19,307 +19,308 @@ class ExploreView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      bottomNavigationBar: TouristBottomNavigationBar(),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 48.h,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(30.r),
-                        ),
-                        child: TextField(
-                          controller: controller.searchController,
-                          decoration: InputDecoration(
-                            hintText: 'Search tours, destinations...',
-                            hintStyle: GoogleFonts.inter(
-                              color: const Color(0xFF999999),
-                              fontSize: 14.sp,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: const Color(0xFF666666),
-                              size: 20.sp,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16.w,
-                              vertical: 14.h,
-                            ),
-                          ),
-                          style: GoogleFonts.inter(
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48.h,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(30.r),
+                      ),
+                      child: TextField(
+                        controller: controller.searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search tours, destinations...',
+                          hintStyle: GoogleFonts.inter(
+                            color: const Color(0xFF999999),
                             fontSize: 14.sp,
-                            color: Colors.black,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: const Color(0xFF666666),
+                            size: 20.sp,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 14.h,
                           ),
                         ),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    GestureDetector(
-                      onTap: controller.toggleFilters,
-                      child: Container(
-                        height: 48.h,
-                        padding: EdgeInsets.symmetric(horizontal: 20.w),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00A86B),
-                          borderRadius: BorderRadius.circular(30.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.filter_list,
-                              color: Colors.white,
-                              size: 20.sp,
-                            ),
-                            SizedBox(width: 8.w),
-                            Text(
-                              'Filters',
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        style: GoogleFonts.inter(
+                          fontSize: 14.sp,
+                          color: Colors.black,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-              Obx(
-                () => controller.isFiltersVisible.value
-                    ? Container(
-                        margin: EdgeInsets.symmetric(horizontal: 18.w),
-                        padding: EdgeInsets.all(20.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16.r),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Filter Tours',
-                              style: GoogleFonts.inter(
-                                color: Colors.black,
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 20.h),
-                            _buildFilterDropdown(
-                              label: 'Region',
-                              icon: Icons.location_on,
-                              value: controller.selectedRegion.value,
-                              onTap: () => _showRegionDialog(context, controller),
-                            ),
-                            SizedBox(height: 16.h),
-                            _buildFilterDropdown(
-                              label: 'Available Date',
-                              icon: Icons.calendar_today,
-                              value: controller.selectedDate.value,
-                              onTap: () => _showDateDialog(context, controller),
-                            ),
-                            SizedBox(height: 16.h),
-                            _buildFilterDropdown(
-                              label: '\$ Price Range',
-                              icon: Icons.attach_money,
-                              value: controller.selectedPriceRange.value,
-                              onTap: () => _showPriceDialog(context, controller),
-                            ),
-                            SizedBox(height: 16.h),
-                            _buildFilterDropdown(
-                              label: '☆ Activity Type',
-                              icon: Icons.star,
-                              value: controller.selectedActivityType.value,
-                              onTap: () =>
-                                  _showActivityDialog(context, controller),
-                            ),
-                            SizedBox(height: 20.h),
-                            Column(
-                              children: [
-                                Obx(
-                                  () => GestureDetector(
-                                    onTap: controller.toggleAIRecommendations,
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.all(12.w),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            controller.isAIRecommendations.value
-                                                ? const Color(0xFF9C27B0)
-                                                : Colors.white,
-                                        borderRadius: BorderRadius.circular(8.r),
-                                        border: Border.all(
-                                          color: const Color(0xFF9C27B0),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            controller.isAIRecommendations.value
-                                                ? Icons.check_box
-                                                : Icons.check_box_outline_blank,
-                                            color:
-                                                controller
-                                                    .isAIRecommendations
-                                                    .value
-                                                ? Colors.white
-                                                : const Color(0xFF9C27B0),
-                                            size: 20.sp,
-                                          ),
-                                          SizedBox(width: 8.w),
-                                          Icon(
-                                            Icons.auto_awesome,
-                                            color:
-                                                controller
-                                                    .isAIRecommendations
-                                                    .value
-                                                ? Colors.white
-                                                : const Color(0xFF9C27B0),
-                                            size: 18.sp,
-                                          ),
-                                          SizedBox(width: 8.w),
-                                          Text(
-                                            'AI Recommendations',
-                                            style: GoogleFonts.inter(
-                                              color:
-                                                  controller
-                                                      .isAIRecommendations
-                                                      .value
-                                                  ? Colors.white
-                                                  : const Color(0xFF9C27B0),
-                                              fontSize: 14.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: 12.h),
-                                Obx(
-                                  () => GestureDetector(
-                                    onTap: controller.toggleNearMe,
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.all(12.w),
-                                      decoration: BoxDecoration(
-                                        color: controller.isNearMe.value
-                                            ? const Color(0xFF2196F3)
-                                            : Colors.white,
-                                        borderRadius: BorderRadius.circular(8.r),
-                                        border: Border.all(
-                                          color: const Color(0xFF2196F3),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            controller.isNearMe.value
-                                                ? Icons.check_box
-                                                : Icons.check_box_outline_blank,
-                                            color: controller.isNearMe.value
-                                                ? Colors.white
-                                                : const Color(0xFF2196F3),
-                                            size: 20.sp,
-                                          ),
-                                          SizedBox(width: 8.w),
-                                          Icon(
-                                            Icons.location_on,
-                                            color: controller.isNearMe.value
-                                                ? Colors.white
-                                                : const Color(0xFF2196F3),
-                                            size: 18.sp,
-                                          ),
-                                          SizedBox(width: 8.w),
-                                          Text(
-                                            'Near Me (< 10km)',
-                                            style: GoogleFonts.inter(
-                                              color: controller.isNearMe.value
-                                                  ? Colors.white
-                                                  : const Color(0xFF2196F3),
-                                              fontSize: 14.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              SizedBox(height: 16.h),
-              Obx(() {
-                  final tours = controller.filteredTours;
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 18.w),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            '${tours.length} tours found',
+                  ),
+                  SizedBox(width: 12.w),
+                  GestureDetector(
+                    onTap: controller.toggleFilters,
+                    child: Container(
+                      height: 48.h,
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00A86B),
+                        borderRadius: BorderRadius.circular(30.r),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.filter_list,
+                            color: Colors.white,
+                            size: 20.sp,
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            'Filters',
                             style: GoogleFonts.inter(
-                              color: const Color(0xFF666666),
+                              color: Colors.white,
                               fontSize: 14.sp,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w600,
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Obx(
+              () => controller.isFiltersVisible.value
+                  ? Container(
+                      margin: EdgeInsets.symmetric(horizontal: 18.w),
+                      padding: EdgeInsets.all(20.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16.r),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Filter Tours',
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 20.h),
+                          _buildFilterDropdown(
+                            label: 'Region',
+                            icon: Icons.location_on,
+                            value: controller.selectedRegion.value,
+                            onTap: () => _showRegionDialog(context, controller),
+                          ),
+                          SizedBox(height: 16.h),
+                          _buildFilterDropdown(
+                            label: 'Available Date',
+                            icon: Icons.calendar_today,
+                            value: controller.selectedDate.value,
+                            onTap: () => _showDateDialog(context, controller),
+                          ),
+                          SizedBox(height: 16.h),
+                          _buildFilterDropdown(
+                            label: '\$ Price Range',
+                            icon: Icons.attach_money,
+                            value: controller.selectedPriceRange.value,
+                            onTap: () => _showPriceDialog(context, controller),
+                          ),
+                          SizedBox(height: 16.h),
+                          _buildFilterDropdown(
+                            label: '☆ Activity Type',
+                            icon: Icons.star,
+                            value: controller.selectedActivityType.value,
+                            onTap: () =>
+                                _showActivityDialog(context, controller),
+                          ),
+                          SizedBox(height: 20.h),
+                          Column(
+                            children: [
+                              Obx(
+                                () => GestureDetector(
+                                  onTap: controller.toggleAIRecommendations,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.all(12.w),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          controller.isAIRecommendations.value
+                                          ? const Color(0xFF9C27B0)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: const Color(0xFF9C27B0),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          controller.isAIRecommendations.value
+                                              ? Icons.check_box
+                                              : Icons.check_box_outline_blank,
+                                          color:
+                                              controller
+                                                  .isAIRecommendations
+                                                  .value
+                                              ? Colors.white
+                                              : const Color(0xFF9C27B0),
+                                          size: 20.sp,
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Icon(
+                                          Icons.auto_awesome,
+                                          color:
+                                              controller
+                                                  .isAIRecommendations
+                                                  .value
+                                              ? Colors.white
+                                              : const Color(0xFF9C27B0),
+                                          size: 18.sp,
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Text(
+                                          'AI Recommendations',
+                                          style: GoogleFonts.inter(
+                                            color:
+                                                controller
+                                                    .isAIRecommendations
+                                                    .value
+                                                ? Colors.white
+                                                : const Color(0xFF9C27B0),
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 12.h),
+                              Obx(
+                                () => GestureDetector(
+                                  onTap: controller.toggleNearMe,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.all(12.w),
+                                    decoration: BoxDecoration(
+                                      color: controller.isNearMe.value
+                                          ? const Color(0xFF2196F3)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: const Color(0xFF2196F3),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          controller.isNearMe.value
+                                              ? Icons.check_box
+                                              : Icons.check_box_outline_blank,
+                                          color: controller.isNearMe.value
+                                              ? Colors.white
+                                              : const Color(0xFF2196F3),
+                                          size: 20.sp,
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Icon(
+                                          Icons.location_on,
+                                          color: controller.isNearMe.value
+                                              ? Colors.white
+                                              : const Color(0xFF2196F3),
+                                          size: 18.sp,
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Text(
+                                          'Near Me (< 10km)',
+                                          style: GoogleFonts.inter(
+                                            color: controller.isNearMe.value
+                                                ? Colors.white
+                                                : const Color(0xFF2196F3),
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            SizedBox(height: 16.h),
+            Expanded(
+              child: Obx(() {
+                final filteredTours = controller.filteredTours;
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18.w),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '${filteredTours.length} tours found',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF666666),
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
-                      SizedBox(height: 16.h),
-                      tours.isEmpty
+                    ),
+                    SizedBox(height: 16.h),
+                    Expanded(
+                      child: filteredTours.isEmpty
                           ? Center(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 50.h),
-                                child: Text(
-                                  'No tours found',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF999999),
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w400,
-                                  ),
+                              child: Text(
+                                'No tours found',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF999999),
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
                             )
-                          : ListView.builder(
-                              physics: const NeverScrollableScrollPhysics(),
-                              shrinkWrap: true,
+                          : SingleChildScrollView(
                               padding: EdgeInsets.symmetric(horizontal: 18.w),
-                              itemCount: tours.length,
-                              itemBuilder: (context, index) {
-                                final tour = tours[index];
-                                return _buildTourCard(tour, controller);
-                              },
+                              child: Column(
+                                children: [
+                                  ...filteredTours.map(
+                                    (tour) => _buildTourCard(tour, controller),
+                                  ),
+                                  SizedBox(height: 24.h),
+                                ],
+                              ),
                             ),
-                    ],
-                  );
-                }),
-            ],
-          ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+            TouristBottomNavigationBar(),
+          ],
         ),
       ),
     );
@@ -381,63 +382,69 @@ class ExploreView extends StatelessWidget {
   void _showRegionDialog(BuildContext context, ExploreController controller) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.5,
-        maxChildSize: 0.9,
-        minChildSize: 0.3,
-        builder: (BuildContext context, ScrollController scrollController) {
-          return Container(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              children: [
-                Text(
-                  'Select Region',
-                  style: GoogleFonts.inter(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 20.h),
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    children: [
-                      _buildOptionItem(
-                        'All Regions',
-                        controller.selectedRegion.value,
-                        () {
-                          controller.selectRegion('All Regions');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem('AlUla', controller.selectedRegion.value, () {
-                        controller.selectRegion('AlUla');
-                        Navigator.pop(context);
-                      }),
-                      _buildOptionItem('Riyadh', controller.selectedRegion.value, () {
-                        controller.selectRegion('Riyadh');
-                        Navigator.pop(context);
-                      }),
-                      _buildOptionItem('Jeddah', controller.selectedRegion.value, () {
-                        controller.selectRegion('Jeddah');
-                        Navigator.pop(context);
-                      }),
-                      _buildOptionItem('Diriyah', controller.selectedRegion.value, () {
-                        controller.selectRegion('Diriyah');
-                        Navigator.pop(context);
-                      }),
-                    ],
-                  ),
-                ),
-              ],
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Select Region',
+              style: GoogleFonts.inter(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          );
-        },
+            SizedBox(height: 20.h),
+            _buildOptionItem(
+              'All Regions',
+              controller.selectedRegion.value,
+              () {
+                controller.selectRegion('All Regions');
+                Navigator.pop(context);
+              },
+            ),
+            _buildOptionItem('Riyadh', controller.selectedRegion.value, () {
+              controller.selectRegion('Riyadh');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Jeddah', controller.selectedRegion.value, () {
+              controller.selectRegion('Jeddah');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('AlUla', controller.selectedRegion.value, () {
+              controller.selectRegion('AlUla');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Abha', controller.selectedRegion.value, () {
+              controller.selectRegion('Abha');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Taif', controller.selectedRegion.value, () {
+              controller.selectRegion('Taif');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Dammam', controller.selectedRegion.value, () {
+              controller.selectRegion('Dammam');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Makkah', controller.selectedRegion.value, () {
+              controller.selectRegion('Makkah');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Madinah', controller.selectedRegion.value, () {
+              controller.selectRegion('Madinah');
+              Navigator.pop(context);
+            }),
+            _buildOptionItem('Diriyah', controller.selectedRegion.value, () {
+              controller.selectRegion('Diriyah');
+              Navigator.pop(context);
+            }),
+            SizedBox(height: 20.h),
+          ],
+        ),
       ),
     );
   }
@@ -550,14 +557,16 @@ class ExploreView extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
       builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.85,
         expand: false,
-        initialChildSize: 0.5,
-        maxChildSize: 0.9,
-        minChildSize: 0.3,
-        builder: (BuildContext context, ScrollController scrollController) {
-          return Container(
+        builder: (_, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          child: Container(
             padding: EdgeInsets.all(20.w),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Select Activity Type',
@@ -567,105 +576,99 @@ class ExploreView extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 20.h),
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    children: [
-                      _buildOptionItem(
-                        'All Activities',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('All Activities');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Adventure',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Adventure');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Cultural Heritage',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Cultural Heritage');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Nature & Wildlife',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Nature & Wildlife');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Religious',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Religious');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Beach',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Beach');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Entertainment',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Entertainment');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Historical',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Historical');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Photography',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Photography');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Food & Culinary',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Food & Culinary');
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildOptionItem(
-                        'Relaxation',
-                        controller.selectedActivityType.value,
-                        () {
-                          controller.selectActivityType('Relaxation');
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  ),
+                _buildOptionItem(
+                  'All Activities',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('All Activities');
+                    Navigator.pop(context);
+                  },
                 ),
+                _buildOptionItem(
+                  'Adventure',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Adventure');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Cultural Heritage',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Cultural Heritage');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Nature & Wildlife',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Nature & Wildlife');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Religious',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Religious');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Beach',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Beach');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Entertainment',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Entertainment');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Historical',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Historical');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Photography',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Photography');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Food & Culinary',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Food & Culinary');
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildOptionItem(
+                  'Relaxation',
+                  controller.selectedActivityType.value,
+                  () {
+                    controller.selectActivityType('Relaxation');
+                    Navigator.pop(context);
+                  },
+                ),
+                SizedBox(height: 20.h),
               ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -746,7 +749,7 @@ class ExploreView extends StatelessWidget {
                           topLeft: Radius.circular(12.r),
                           topRight: Radius.circular(12.r),
                         ),
-                        child: Image.network(
+                        child: Image.asset(
                           tour['image'] as String,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {

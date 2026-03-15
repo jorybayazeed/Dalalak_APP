@@ -164,7 +164,6 @@ class TouristHomeView extends StatelessWidget {
                         ],
                       ),
                     ),
-                   
                     SizedBox(height: 20.h),
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: 18.w),
@@ -312,233 +311,76 @@ class TouristHomeView extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 24.h),
-                    Container(
-                      margin: EdgeInsets.symmetric(horizontal: 18.w),
-                      padding: EdgeInsets.all(20.w),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16.r),
-                      ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18.w),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'AlUla Heritage Tour - Dec 25, 2024',
-                                      style: GoogleFonts.inter(
-                                        color: Colors.black,
-                                        fontSize: 18.sp,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4.h),
-                                    Text(
-                                      'Complete activities to earn points!',
-                                      style: GoogleFonts.inter(
-                                        color: const Color(0xFF666666),
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Obx(
-                                () => Text(
-                                  '${controller.completedActivities}/${controller.totalActivities} completed',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF00A86B),
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16.h),
-                          Container(
-                            width: double.infinity,
-                            height: 200.h,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8F5E9),
-                              borderRadius: BorderRadius.circular(12.r),
+                          Text(
+                            'Recommended For You',
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.bold,
                             ),
-                            child: Stack(
-                              children: [
-                                Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.map,
-                                        size: 48.sp,
-                                        color: const Color(0xFF4CAF50),
-                                      ),
-                                      SizedBox(height: 8.h),
-                                      Text(
-                                        'Map View',
-                                        style: GoogleFonts.inter(
-                                          color: const Color(0xFF666666),
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 40.h,
-                                  left: 60.w,
-                                  child: _buildMapMarker(
-                                    'Elephant Rock',
-                                    Icons.place,
-                                    Colors.orange,
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 60.h,
-                                  left: 100.w,
-                                  child: _buildMapMarker(
-                                    'Hegra Archaeological Site',
-                                    Icons.place,
-                                    Colors.orange,
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 50.h,
-                                  right: 80.w,
-                                  child: _buildMapMarker(
-                                    'Old Town',
-                                    Icons.place,
-                                    Colors.orange,
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 20.h,
-                                  left: 40.w,
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8.w,
-                                      vertical: 4.h,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(4.r),
-                                    ),
-                                    child: Text(
-                                      '15',
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'AI-selected packages based on your profile',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF666666),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
                       ),
                     ),
-                     SizedBox(height: 24.h),
+                    SizedBox(height: 12.h),
+                    Obx(
+                      () {
+                        if (controller.isLoadingRecommendations.value) {
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20.w),
+                              child: const CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF00A86B),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
 
-Padding(
-  padding: EdgeInsets.symmetric(horizontal: 18.w),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
+                        if (controller.aiRecommendedPackages.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20.w),
+                              child: Text(
+                                'No packages available at the moment',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF666666),
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
 
-      Text(
-        'Recommended For You',
-        style: GoogleFonts.inter(
-          color: Colors.black,
-          fontSize: 18.sp,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-
-      SizedBox(height: 12.h),
-
-      Obx(() {
-
-        if (controller.recommendedTours.isEmpty) {
-          return const SizedBox();
-        }
-
-        return Column(
-          children: controller.recommendedTours.map((tour) {
-
-            return Container(
-              margin: EdgeInsets.only(bottom: 12.h),
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Row(
-                children: [
-
-                  Icon(
-                    Icons.explore,
-                    color: const Color(0xFF00A86B),
-                    size: 24.sp,
-                  ),
-
-                  SizedBox(width: 12.w),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-
-                        Text(
-                          tour['tourTitle'] ?? '',
-                          style: GoogleFonts.inter(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
+                        return SizedBox(
+                          height: 280.h,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.symmetric(horizontal: 18.w),
+                            itemCount: controller.aiRecommendedPackages.length,
+                            itemBuilder: (context, index) {
+                              final package = controller.aiRecommendedPackages[index];
+                              return _buildRecommendedPackageCard(package);
+                            },
                           ),
-                        ),
-
-                        SizedBox(height: 4.h),
-
-                        Text(
-                          tour['destination'] ?? '',
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            color: const Color(0xFF666666),
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  ),
-
-                  Text(
-                    '${tour['price']} SAR',
-                    style: GoogleFonts.inter(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-
-                ],
-              ),
-            );
-
-          }).toList(),
-        );
-
-      })
-
-    ],
-  ),
-),
                     SizedBox(height: 24.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),
@@ -658,6 +500,150 @@ Padding(
             TouristBottomNavigationBar(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendedPackageCard(Map<String, dynamic> package) {
+    final title = package['tourTitle'] as String? ?? 'Unknown Tour';
+    final destination = package['destination'] as String? ?? 'Unknown';
+    final price = package['price'] as String? ?? '0';
+    final activityType = package['activityType'] as String? ?? '';
+    final rating = (package['rating'] as num?)?.toDouble() ?? 0.0;
+    final score = package['recommendationScore'] as num?;
+
+    return Container(
+      width: 240.w,
+      margin: EdgeInsets.only(right: 12.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            height: 120.h,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(12.r)),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Icon(
+                    Icons.tour,
+                    size: 48.sp,
+                    color: const Color(0xFF4CAF50),
+                  ),
+                ),
+                Positioned(
+                  top: 8.w,
+                  right: 8.w,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00A86B),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Text(
+                      'AI Pick',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(12.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      size: 12.sp,
+                      color: const Color(0xFF666666),
+                    ),
+                    SizedBox(width: 4.w),
+                    Expanded(
+                      child: Text(
+                        destination,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF666666),
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '$price SAR',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF00A86B),
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.star,
+                          size: 12.sp,
+                          color: Colors.amber,
+                        ),
+                        SizedBox(width: 2.w),
+                        Text(
+                          rating.toStringAsFixed(1),
+                          style: GoogleFonts.inter(
+                            color: Colors.black,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

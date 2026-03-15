@@ -109,17 +109,17 @@ class CreatePackageView extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 20.h),
-                       Obx(
+                      Obx(
                         () => _buildDropdownField(
-                          label: 'Region *',
-                          hintText: 'Select region',
-                          value: controller.selectedRegion.value.isEmpty
+                          label: 'Activity Type',
+                          hintText: 'Select activity type',
+                          value: controller.selectedActivityType.value.isEmpty
                               ? null
-                              : controller.selectedRegion.value,
-                          items: controller.regions,
+                              : controller.selectedActivityType.value,
+                          items: controller.activityTypes,
                           onChanged: (value) {
                             if (value != null) {
-                              controller.setRegion(value);
+                              controller.setActivityType(value);
                             }
                           },
                         ),
@@ -218,39 +218,31 @@ class CreatePackageView extends StatelessWidget {
                         ],
                       ),
                       SizedBox(height: 20.h),
-                      Obx(
-                        () => _buildTextField(
-                          label: 'Price (SAR) *',
-                          hintText: '500',
-                          controller: TextEditingController(
-                            text: controller.price.value,
-                          ),
-                          keyboardType: TextInputType.number,
-                          prefixIcon: Icon(
-                            Icons.attach_money,
-                            color: const Color(0xFF666666),
-                            size: 20.sp,
-                          ),
-                          onChanged: (value) => controller.setPrice(value),
+                      _buildTextField(
+                        label: 'Price (SAR) *',
+                        hintText: '500',
+                        controller: controller.priceController,
+                        keyboardType: TextInputType.number,
+                        prefixIcon: Icon(
+                          Icons.attach_money,
+                          color: const Color(0xFF666666),
+                          size: 20.sp,
                         ),
+                        onChanged: (value) => controller.setPrice(value),
                       ),
                       SizedBox(height: 20.h),
-                      Obx(
-                        () => _buildTextField(
-                          label: 'Max Group Size *',
-                          hintText: '15',
-                          controller: TextEditingController(
-                            text: controller.maxGroupSize.value,
-                          ),
-                          keyboardType: TextInputType.number,
-                          prefixIcon: Icon(
-                            Icons.people,
-                            color: const Color(0xFF666666),
-                            size: 20.sp,
-                          ),
-                          onChanged: (value) =>
-                              controller.setMaxGroupSize(value),
+                      _buildTextField(
+                        label: 'Max Group Size *',
+                        hintText: '15',
+                        controller: controller.maxGroupSizeController,
+                        keyboardType: TextInputType.number,
+                        prefixIcon: Icon(
+                          Icons.people,
+                          color: const Color(0xFF666666),
+                          size: 20.sp,
                         ),
+                        onChanged: (value) =>
+                            controller.setMaxGroupSize(value),
                       ),
                       SizedBox(height: 20.h),
                       Obx(
@@ -636,18 +628,8 @@ class CreatePackageView extends StatelessWidget {
             controller: TextEditingController(text: activity.activityName),
             onChanged: (value) => controller.updateActivityName(index, value),
           ),
-          _buildDropdownField(
-  label: 'Activity Type',
-  hintText: 'Select activity type',
-  value: activity.activityType.isEmpty ? null : activity.activityType,
-  items: controller.activityTypes,
-  onChanged: (value) {
-    if (value != null) {
-      controller.updateActivityType(index, value);
-    }
-  },
-),
-        SizedBox(height: 16.h),
+          SizedBox(height: 16.h),
+
           // Position Fields
           Row(
             children: [
