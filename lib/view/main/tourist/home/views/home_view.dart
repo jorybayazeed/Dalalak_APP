@@ -164,6 +164,7 @@ class TouristHomeView extends StatelessWidget {
                         ],
                       ),
                     ),
+                   
                     SizedBox(height: 20.h),
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: 18.w),
@@ -446,6 +447,98 @@ class TouristHomeView extends StatelessWidget {
                         ],
                       ),
                     ),
+                     SizedBox(height: 24.h),
+
+Padding(
+  padding: EdgeInsets.symmetric(horizontal: 18.w),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      Text(
+        'Recommended For You',
+        style: GoogleFonts.inter(
+          color: Colors.black,
+          fontSize: 18.sp,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+
+      SizedBox(height: 12.h),
+
+      Obx(() {
+
+        if (controller.recommendedTours.isEmpty) {
+          return const SizedBox();
+        }
+
+        return Column(
+          children: controller.recommendedTours.map((tour) {
+
+            return Container(
+              margin: EdgeInsets.only(bottom: 12.h),
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Row(
+                children: [
+
+                  Icon(
+                    Icons.explore,
+                    color: const Color(0xFF00A86B),
+                    size: 24.sp,
+                  ),
+
+                  SizedBox(width: 12.w),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        Text(
+                          tour['tourTitle'] ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        SizedBox(height: 4.h),
+
+                        Text(
+                          tour['destination'] ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            color: const Color(0xFF666666),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Text(
+                    '${tour['price']} SAR',
+                    style: GoogleFonts.inter(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                ],
+              ),
+            );
+
+          }).toList(),
+        );
+
+      })
+
+    ],
+  ),
+),
                     SizedBox(height: 24.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),

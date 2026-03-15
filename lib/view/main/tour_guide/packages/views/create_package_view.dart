@@ -124,22 +124,6 @@ class CreatePackageView extends StatelessWidget {
                           },
                         ),
                       ),
-                       SizedBox(height: 20.h),
-                      Obx(
-                        () => _buildDropdownField(
-                          label: 'Activity Type *',
-                          hintText: 'Select activity type',
-                          value: controller.selectedActivityType.value.isEmpty
-                              ? null
-                              : controller.selectedActivityType.value,
-                          items: controller.activityTypes,
-                          onChanged: (value) {
-                            if (value != null) {
-                              controller.setActivityType(value);
-                            }
-                          },
-                        ),
-                      ),
                       SizedBox(height: 20.h),
                       Row(
                         children: [
@@ -652,8 +636,18 @@ class CreatePackageView extends StatelessWidget {
             controller: TextEditingController(text: activity.activityName),
             onChanged: (value) => controller.updateActivityName(index, value),
           ),
-          SizedBox(height: 16.h),
-
+          _buildDropdownField(
+  label: 'Activity Type',
+  hintText: 'Select activity type',
+  value: activity.activityType.isEmpty ? null : activity.activityType,
+  items: controller.activityTypes,
+  onChanged: (value) {
+    if (value != null) {
+      controller.updateActivityType(index, value);
+    }
+  },
+),
+        SizedBox(height: 16.h),
           // Position Fields
           Row(
             children: [

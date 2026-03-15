@@ -6,39 +6,36 @@ import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dar
 class TourActivity {
   String id;
   String activityName;
+  String activityType;
   String xPosition;
   String yPosition;
   String question;
   String questionType;
   List<String> answerOptions;
   String correctAnswer;
-  
-
-  
- 
 
   TourActivity({
     required this.id,
     this.activityName = '',
+    this.activityType = '',
     this.xPosition = '50',
     this.yPosition = '50',
     this.question = '',
     this.questionType = 'Multiple Choice',
     this.answerOptions = const ['', '', '', ''],
     this.correctAnswer = '',
-    
   });
 
   Map<String, dynamic> toMap() {
     return {
       'activityName': activityName,
+      'activityType': activityType,
       'xPosition': xPosition,
       'yPosition': yPosition,
       'question': question,
       'questionType': questionType,
       'answerOptions': answerOptions,
       'correctAnswer': correctAnswer,
-      
     };
   }
 
@@ -46,17 +43,17 @@ class TourActivity {
     return TourActivity(
       id: id,
       activityName: map['activityName'] as String? ?? '',
+      activityType: map['activityType'] as String? ?? '',
       xPosition: map['xPosition'] as String? ?? '50',
       yPosition: map['yPosition'] as String? ?? '50',
       question: map['question'] as String? ?? '',
       questionType: map['questionType'] as String? ?? 'Multiple Choice',
       answerOptions:
           (map['answerOptions'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          ['', '', '', ''],
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              ['', '', '', ''],
       correctAnswer: map['correctAnswer'] ?? '',
-      
     );
   }
 }
@@ -303,6 +300,23 @@ class CreatePackageController extends GetxController {
     }
   }
 
+ void updateActivityType(int index, String value) {
+  final current = activities[index];
+
+  final updated = TourActivity(
+    id: current.id,
+    activityName: current.activityName,
+    activityType: value,
+    xPosition: current.xPosition,
+    yPosition: current.yPosition,
+    question: current.question,
+    questionType: current.questionType,
+    answerOptions: List<String>.from(current.answerOptions),
+    correctAnswer: current.correctAnswer,
+  );
+
+  activities[index] = updated;
+}
   void updateActivityXPosition(int index, String value) {
     if (index >= 0 && index < activities.length) {
       activities[index].xPosition = value;
@@ -314,6 +328,7 @@ class CreatePackageController extends GetxController {
       activities[index].yPosition = value;
     }
   }
+
 
   void updateActivityQuestion(int index, String value) {
     if (index >= 0 && index < activities.length) {

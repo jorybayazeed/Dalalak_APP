@@ -616,12 +616,16 @@ class CreateAccountView extends StatelessWidget {
                                     runSpacing: 12.h,
                                     children: [
                                       'Adventure',
-                                      'History & Culture',
-                                      'Food & Culinary',
+                                      'Cultural Heritage',
                                       'Nature & Wildlife',
-                                      'Relaxation',
-                                      'Nightlife & Entertainment',
-                                      'Shopping'
+                                      'Religious',
+                                      'Beach',
+                                      'Entertainment',
+                                      'Historical',
+                                      'Photography',
+                                      'Food & Culinary',
+                                      'Relaxation'
+                                      
                                     ]
                                         .map(
                                           (interest) => Obx(
