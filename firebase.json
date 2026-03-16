@@ -1,1 +1,59 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"dalelak-b6812","appId":"1:78743566270:android:178c26981dc7f34e0debef","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"dalelak-b6812","configurations":{"android":"1:78743566270:android:178c26981dc7f34e0debef","ios":"1:78743566270:ios:90ce6a7c1637111b0debef","macos":"1:78743566270:ios:90ce6a7c1637111b0debef","web":"1:78743566270:web:1630f1f86ade2ff70debef","windows":"1:78743566270:web:0ee93f027d725e3e0debef"}}}}}}
+{
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|wasm)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dalelak-b6812",
+          "appId": "1:78743566270:android:178c26981dc7f34e0debef",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dalelak-b6812",
+          "configurations": {
+            "android": "1:78743566270:android:178c26981dc7f34e0debef",
+            "ios": "1:78743566270:ios:90ce6a7c1637111b0debef",
+            "macos": "1:78743566270:ios:90ce6a7c1637111b0debef",
+            "web": "1:78743566270:web:1630f1f86ade2ff70debef",
+            "windows": "1:78743566270:web:0ee93f027d725e3e0debef"
+          }
+        }
+      }
+    }
+  }
+}
