@@ -66,6 +66,7 @@ class CreatePackageController extends GetxController {
 
   final RxString tourTitle = ''.obs;
   final RxString selectedDestination = ''.obs;
+  final RxString selectedRegion = ''.obs;
   final RxString selectedActivityType = ''.obs;
   final RxString durationValue = '3'.obs;
   final RxString durationUnit = 'Hours'.obs;
@@ -80,8 +81,10 @@ class CreatePackageController extends GetxController {
   final String? packageId;
   final TextEditingController tourTitleController = TextEditingController();
   final TextEditingController tourDescriptionController = TextEditingController();
+  final TextEditingController durationValueController = TextEditingController(text: '3');
   final TextEditingController priceController = TextEditingController(text: '500');
   final TextEditingController maxGroupSizeController = TextEditingController(text: '15');
+  final TextEditingController selectedDatesController = TextEditingController();
 
   CreatePackageController({this.packageId});
 
@@ -105,14 +108,17 @@ class CreatePackageController extends GetxController {
         tourTitle.value = packageData['tourTitle'] as String? ?? '';
         tourTitleController.text = tourTitle.value;
         selectedDestination.value = packageData['destination'] as String? ?? '';
+        selectedRegion.value = packageData['region'] as String? ?? selectedDestination.value;
         selectedActivityType.value = packageData['activityType'] as String? ?? '';
         durationValue.value = packageData['durationValue'] as String? ?? '3';
+        durationValueController.text = durationValue.value;
         durationUnit.value = packageData['durationUnit'] as String? ?? 'Hours';
         price.value = priceValue;
         priceController.text = priceValue;
         maxGroupSize.value = maxGroupSizeValue;
         maxGroupSizeController.text = maxGroupSizeValue;
         selectedDates.value = packageData['availableDates'] as String? ?? '';
+        selectedDatesController.text = selectedDates.value;
         tourDescription.value = packageData['tourDescription'] as String? ?? '';
         tourDescriptionController.text = tourDescription.value;
 
@@ -178,6 +184,8 @@ class CreatePackageController extends GetxController {
 
   void setDestination(String destination) {
     selectedDestination.value = destination;
+    // Keep region aligned with destination when no dedicated region selector exists.
+    selectedRegion.value = destination;
   }
 
   void setActivityType(String activityType) {
@@ -194,16 +202,15 @@ class CreatePackageController extends GetxController {
 
   void setPrice(String value) {
     price.value = value;
-    priceController.text = value;
   }
 
   void setMaxGroupSize(String value) {
     maxGroupSize.value = value;
-    maxGroupSizeController.text = value;
   }
 
   void setSelectedDates(String dates) {
     selectedDates.value = dates;
+    selectedDatesController.text = dates;
   }
 
   Future<void> selectDates(BuildContext context) async {
@@ -232,6 +239,7 @@ class CreatePackageController extends GetxController {
       final formattedDates =
           '${_formatDate(startDate)} - ${_formatDate(endDate)}';
       selectedDates.value = formattedDates;
+      selectedDatesController.text = formattedDates;
     }
   }
 
@@ -433,6 +441,7 @@ class CreatePackageController extends GetxController {
           packageId: packageId!,
           tourTitle: tourTitle.value.trim(),
           destination: selectedDestination.value,
+          region: selectedRegion.value,
           durationValue: durationValue.value,
           durationUnit: durationUnit.value,
           price: price.value.trim(),
@@ -460,6 +469,7 @@ class CreatePackageController extends GetxController {
         await _packagesService.createPackage(
           tourTitle: tourTitle.value.trim(),
           destination: selectedDestination.value,
+          region: selectedRegion.value,
           durationValue: durationValue.value,
           durationUnit: durationUnit.value,
           price: price.value.trim(),
@@ -494,8 +504,10 @@ class CreatePackageController extends GetxController {
   void onClose() {
     tourTitleController.dispose();
     tourDescriptionController.dispose();
+    durationValueController.dispose();
     priceController.dispose();
     maxGroupSizeController.dispose();
+    selectedDatesController.dispose();
     for (var controller in correctAnswerControllers) {
       controller.dispose();
     }
