@@ -14,19 +14,31 @@ import 'package:tour_app/view/onboarding/views/onboarding_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  await StorageService.init();
-  Get.put(AuthService(), permanent: true);
-  Get.put(UserService(), permanent: true);
-  Get.put(PackagesService(), permanent: true);
-  Get.put(TouristHomeController(), permanent: true);
-  runApp(const MyApp());
+
+  String? initializationError;
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await StorageService.init();
+    Get.put(AuthService(), permanent: true);
+    Get.put(UserService(), permanent: true);
+    Get.put(PackagesService(), permanent: true);
+    Get.put(TouristHomeController(), permanent: true);
+  } catch (e, st) {
+    initializationError = e.toString();
+    debugPrint('App initialization failed: $e');
+    debugPrintStack(stackTrace: st);
+  }
+
+  runApp(MyApp(initializationError: initializationError));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.initializationError});
+
+  final String? initializationError;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +61,9 @@ class MyApp extends StatelessWidget {
                     seedColor: Colors.deepPurple,
                   ),
                 ),
-                home: _getInitialRoute(),
+                home: initializationError == null
+                    ? _getInitialRoute()
+                    : _StartupErrorView(message: initializationError!),
               ),
             );
           },
@@ -68,6 +82,40 @@ class MyApp extends StatelessWidget {
       }
     }
     return const OnboardingView();
+  }
+}
+
+class _StartupErrorView extends StatelessWidget {
+  const _StartupErrorView({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Initialization Error',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

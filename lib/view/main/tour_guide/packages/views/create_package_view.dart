@@ -142,32 +142,28 @@ class CreatePackageView extends StatelessWidget {
                         children: [
                           Expanded(
                             flex: 2,
-                            child: Obx(
-                              () => TextField(
-                                controller: TextEditingController(
-                                  text: controller.durationValue.value,
+                            child: TextField(
+                              controller: controller.durationValueController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                hintText: '3',
+                                filled: true,
+                                fillColor: const Color(0xFFF5F5F5),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: BorderSide.none,
                                 ),
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                  hintText: '3',
-                                  filled: true,
-                                  fillColor: const Color(0xFFF5F5F5),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12.r),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16.w,
-                                    vertical: 16.h,
-                                  ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16.w,
+                                  vertical: 16.h,
                                 ),
-                                style: GoogleFonts.inter(
-                                  fontSize: 16.sp,
-                                  color: Colors.black,
-                                ),
-                                onChanged: (value) =>
-                                    controller.setDurationValue(value),
                               ),
+                              style: GoogleFonts.inter(
+                                fontSize: 16.sp,
+                                color: Colors.black,
+                              ),
+                              onChanged: (value) =>
+                                  controller.setDurationValue(value),
                             ),
                           ),
                           SizedBox(width: 12.w),
@@ -245,26 +241,22 @@ class CreatePackageView extends StatelessWidget {
                             controller.setMaxGroupSize(value),
                       ),
                       SizedBox(height: 20.h),
-                      Obx(
-                        () => _buildTextField(
-                          label: 'Available Dates',
-                          hintText: 'Select dates',
-                          controller: TextEditingController(
-                            text: controller.selectedDates.value,
-                          ),
-                          prefixIcon: Icon(
-                            Icons.calendar_today,
-                            color: const Color(0xFF666666),
-                            size: 20.sp,
-                          ),
-                          readOnly: true,
-                          onTap: () {
-                            controller.selectDates(context);
-                          },
-                          onChanged: (value) {
-                            controller.setSelectedDates(value);
-                          },
+                      _buildTextField(
+                        label: 'Available Dates',
+                        hintText: 'Select dates',
+                        controller: controller.selectedDatesController,
+                        prefixIcon: Icon(
+                          Icons.calendar_today,
+                          color: const Color(0xFF666666),
+                          size: 20.sp,
                         ),
+                        readOnly: true,
+                        onTap: () {
+                          controller.selectDates(context);
+                        },
+                        onChanged: (value) {
+                          controller.setSelectedDates(value);
+                        },
                       ),
                       SizedBox(height: 20.h),
                       Text(
@@ -507,6 +499,57 @@ class CreatePackageView extends StatelessWidget {
     );
   }
 
+  Widget _buildInitialValueTextField({
+    required String label,
+    required String hintText,
+    required String initialValue,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+    required Function(String) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label.isNotEmpty)
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: Colors.black,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        if (label.isNotEmpty) SizedBox(height: 8.h),
+        TextFormField(
+          initialValue: initialValue,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.left,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: GoogleFonts.inter(
+              color: const Color(0xFF999999),
+              fontSize: 16.sp,
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF5F5F5),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.r),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 16.h,
+            ),
+          ),
+          style: GoogleFonts.inter(fontSize: 16.sp, color: Colors.black),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
   Widget _buildDropdownField({
     required String label,
     required String hintText,
@@ -622,10 +665,10 @@ class CreatePackageView extends StatelessWidget {
           SizedBox(height: 16.h),
 
           // Activity Name
-          _buildTextField(
+          _buildInitialValueTextField(
             label: 'Activity Name',
             hintText: 'e.g., Elephant Rock',
-            controller: TextEditingController(text: activity.activityName),
+            initialValue: activity.activityName,
             onChanged: (value) => controller.updateActivityName(index, value),
           ),
           SizedBox(height: 16.h),
@@ -634,10 +677,10 @@ class CreatePackageView extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildTextField(
+                child: _buildInitialValueTextField(
                   label: 'X Position (%)',
                   hintText: '50',
-                  controller: TextEditingController(text: activity.xPosition),
+                  initialValue: activity.xPosition,
                   keyboardType: TextInputType.number,
                   onChanged: (value) =>
                       controller.updateActivityXPosition(index, value),
@@ -645,10 +688,10 @@ class CreatePackageView extends StatelessWidget {
               ),
               SizedBox(width: 12.w),
               Expanded(
-                child: _buildTextField(
+                child: _buildInitialValueTextField(
                   label: 'Y Position (%)',
                   hintText: '50',
-                  controller: TextEditingController(text: activity.yPosition),
+                  initialValue: activity.yPosition,
                   keyboardType: TextInputType.number,
                   onChanged: (value) =>
                       controller.updateActivityYPosition(index, value),
@@ -668,31 +711,12 @@ class CreatePackageView extends StatelessWidget {
             ),
           ),
           SizedBox(height: 8.h),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: TextField(
-              controller: TextEditingController(text: activity.question),
-              maxLines: 3,
-              textDirection: TextDirection.ltr,
-              textAlign: TextAlign.left,
-              decoration: InputDecoration(
-                hintText: 'Enter the question tourists will answer...',
-                hintStyle: GoogleFonts.inter(
-                  color: const Color(0xFF999999),
-                  fontSize: 16.sp,
-                ),
-                filled: true,
-                fillColor: const Color(0xFFF5F5F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.r),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: EdgeInsets.all(16.w),
-              ),
-              style: GoogleFonts.inter(fontSize: 16.sp, color: Colors.black),
-              onChanged: (value) =>
-                  controller.updateActivityQuestion(index, value),
-            ),
+          _buildInitialValueTextField(
+            label: '',
+            hintText: 'Enter the question tourists will answer...',
+            initialValue: activity.question,
+            maxLines: 3,
+            onChanged: (value) => controller.updateActivityQuestion(index, value),
           ),
           SizedBox(height: 16.h),
 
@@ -795,19 +819,16 @@ Obx(() {
               activeColor: const Color(0xFF00A86B),
             ),
             Expanded(
-              child: _buildTextField(
+              child: _buildInitialValueTextField(
                 label: questionType == 'True/False'
                     ? (optionIndex == 0 ? 'True' : 'False')
                     : 'Option ${optionIndex + 1}',
                 hintText: questionType == 'True/False'
                     ? (optionIndex == 0 ? 'True' : 'False')
                     : 'Option ${optionIndex + 1}',
-                controller: TextEditingController(
-                  text: optionIndex <
-                          currentActivity.answerOptions.length
-                      ? currentActivity.answerOptions[optionIndex]
-                      : '',
-                ),
+                initialValue: optionIndex < currentActivity.answerOptions.length
+                    ? currentActivity.answerOptions[optionIndex]
+                    : '',
                 onChanged: (value) =>
                     controller.updateActivityAnswerOption(
                   index,
