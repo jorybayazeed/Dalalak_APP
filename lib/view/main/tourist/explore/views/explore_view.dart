@@ -5,6 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tour_app/view/main/tourist/explore/controllers/explore_controller.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
+import 'package:tour_app/view/main/tourist/explore/views/package_details_view.dart';
+import 'package:tour_app/view/main/tourist/bookings/views/booking_view.dart';
+
 
 class ExploreView extends StatelessWidget {
   const ExploreView({super.key});
@@ -715,7 +718,15 @@ class ExploreView extends StatelessWidget {
     final isAIPick = tour['isAIPick'] ?? false;
     final distance = tour['distance'];
 
-    return Container(
+    return GestureDetector(
+  onTap: () {
+    Get.to(
+      () => PackageDetailsView(
+        packageId: tour['id'],
+      ),
+    );
+  },
+  child: Container(
       margin: EdgeInsets.only(bottom: 16.h),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -929,11 +940,72 @@ class ExploreView extends StatelessWidget {
                    ),
                   ],
                 ),
+                SizedBox(height: 16.h),
+
+Row(
+  children: [
+    Expanded(
+      child: OutlinedButton(
+        onPressed: () {
+          Get.to(
+            () => PackageDetailsView(
+              packageId: tour['id'],
+            ),
+          );
+        },
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFF00A86B)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+        ),
+        child: Text(
+          'View Details',
+          style: GoogleFonts.inter(
+            color: const Color(0xFF00A86B),
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ),
+    SizedBox(width: 12.w),
+    Expanded(
+      child: ElevatedButton(
+       onPressed: () {
+  Get.to(
+    () => BookingView(
+      tour: tour,
+    ),
+  );
+},
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00A86B),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+        ),
+        child: Text(
+          'Book',
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ),
+  ],
+),
               ],
             ),
           ),
         ],
       ),
-    );
+   ), 
+); 
   }
 }

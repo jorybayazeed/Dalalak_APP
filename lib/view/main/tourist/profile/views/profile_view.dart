@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tour_app/view/main/tourist/profile/controllers/profile_controller.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
+import 'package:tour_app/view/main/tourist/explore/views/package_details_view.dart';
 
 class TouristProfileView extends StatelessWidget {
   const TouristProfileView({super.key});
@@ -13,9 +14,10 @@ class TouristProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(TouristProfileController());
     final homeController = Get.put(TouristHomeController());
-    if (homeController.currentBottomNavIndex.value != 3) {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       homeController.currentBottomNavIndex.value = 3;
-    }
+    });
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F0E8),
@@ -53,40 +55,41 @@ class TouristProfileView extends StatelessWidget {
                           ),
                           SizedBox(width: 16.w),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  controller.userData['name'] as String,
-                                  style: GoogleFonts.inter(
-                                    color: Colors.black,
-                                    fontSize: 20.sp,
-                                    fontWeight: FontWeight.bold,
+                            child: Obx(
+                              () => Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    controller.userData['fullName'] ?? '',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.black,
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 12.h),
-                                _buildUserDetailRow(
-                                  icon: Icons.email,
-                                  text: controller.userData['email'] as String,
-                                ),
-                                SizedBox(height: 8.h),
-                                _buildUserDetailRow(
-                                  icon: Icons.phone,
-                                  text: controller.userData['phone'] as String,
-                                ),
-                                SizedBox(height: 8.h),
-                                _buildUserDetailRow(
-                                  icon: Icons.location_on,
-                                  text:
-                                      controller.userData['location'] as String,
-                                ),
-                                SizedBox(height: 8.h),
-                                _buildUserDetailRow(
-                                  icon: Icons.calendar_today,
-                                  text:
-                                      'Member since ${controller.userData['memberSince'] as String}',
-                                ),
-                              ],
+                                  SizedBox(height: 12.h),
+                                  _buildUserDetailRow(
+                                    icon: Icons.email,
+                                    text: controller.userData['email'] ?? '',
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  _buildUserDetailRow(
+                                    icon: Icons.phone,
+                                    text: controller.userData['phone'] ?? '',
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  _buildUserDetailRow(
+                                    icon: Icons.location_on,
+                                    text: controller.userData['location'] ?? '',
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  _buildUserDetailRow(
+                                    icon: Icons.calendar_today,
+                                    text:
+                                        'Member since ${controller.userData['memberSince'] ?? ''}',
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -101,8 +104,7 @@ class TouristProfileView extends StatelessWidget {
                               () => _buildStatCard(
                                 icon: Icons.star_outline,
                                 iconColor: const Color(0xFF00A86B),
-                                value: controller.toursCompleted.value
-                                    .toString(),
+                                value: controller.toursCompleted.value.toString(),
                                 label: 'Tours Completed',
                               ),
                             ),
@@ -178,7 +180,7 @@ class TouristProfileView extends StatelessWidget {
                 ),
               ),
             ),
-            TouristBottomNavigationBar(),
+            const TouristBottomNavigationBar(),
           ],
         ),
       ),
@@ -286,6 +288,7 @@ class TouristProfileView extends StatelessWidget {
 
   Widget _buildCompletedToursList(TouristProfileController controller) {
     final tours = controller.completedTours;
+
     if (tours.isEmpty) {
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: 18.w),
@@ -319,6 +322,7 @@ class TouristProfileView extends StatelessWidget {
 
   Widget _buildSavedToursList(TouristProfileController controller) {
     final tours = controller.savedToursList;
+
     if (tours.isEmpty) {
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: 18.w),
@@ -345,7 +349,9 @@ class TouristProfileView extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 18.w),
       child: Column(
-        children: [...tours.map((tour) => _buildSavedTourCard(tour))],
+        children: [
+          ...tours.map((tour) => _buildSavedTourCard(tour, controller)),
+        ],
       ),
     );
   }
@@ -484,7 +490,10 @@ class TouristProfileView extends StatelessWidget {
     );
   }
 
-  Widget _buildSavedTourCard(Map<String, dynamic> tour) {
+  Widget _buildSavedTourCard(
+    Map<String, dynamic> tour,
+    TouristProfileController controller,
+  ) {
     final rating = tour['rating'] as double;
 
     return Container(
@@ -513,7 +522,8 @@ class TouristProfileView extends StatelessWidget {
                 topRight: Radius.circular(12.r),
               ),
             ),
-            child: tour['image'] != null
+            child: tour['image'] != null &&
+                    (tour['image'] as String).isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(12.r),
@@ -569,6 +579,52 @@ class TouristProfileView extends StatelessWidget {
                     ),
                   ),
                 ),
+                SizedBox(height: 16.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () {
+                        Get.to(
+                          () => PackageDetailsView(
+                            packageId: tour['id'],
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF00A86B)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                      ),
+                      child: Text(
+                        'View Details',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF00A86B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        controller.removeSavedTour(tour['id']);
+                      },
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: Colors.red,
+                        size: 18.sp,
+                      ),
+                      label: Text(
+                        'Remove',
+                        style: GoogleFonts.inter(
+                          color: Colors.red,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -577,4 +633,3 @@ class TouristProfileView extends StatelessWidget {
     );
   }
 }
-

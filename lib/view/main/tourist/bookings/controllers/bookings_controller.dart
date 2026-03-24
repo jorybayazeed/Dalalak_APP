@@ -1,63 +1,92 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:tour_app/view/main/tourist/explore/views/package_details_view.dart';
 
 class BookingsController extends GetxController {
   final RxString selectedTab = 'Upcoming'.obs;
+  final RxList<Map<String, dynamic>> allBookings = <Map<String, dynamic>>[].obs;
+  final RxBool isLoading = false.obs;
 
-  final RxList<Map<String, dynamic>> allBookings = [
-    {
-      'id': 'DLK-00123',
-      'tourId': '1',
-      'title': 'AlUla Heritage Tour',
-      'guide': 'Ahmed Al-Rashid',
-      'date': 'Dec 25, 2024',
-      'time': '09:00 AM - 6 hours',
-      'location': 'AlUla',
-      'price': '900 SAR',
-      'status': 'Upcoming',
-      'image': 'images/tour_1.png',
-    },
-    {
-      'id': 'DLK-00124',
-      'tourId': '2',
-      'title': 'Riyadh City Explorer',
-      'guide': 'Fatima Al-Otaibi',
-      'date': 'Dec 30, 2024',
-      'time': '10:00 AM - 4 hours',
-      'location': 'Riyadh',
-      'price': '350 SAR',
-      'status': 'Upcoming',
-      'image': 'images/tour_2.png',
-    },
-    {
-      'id': 'DLK-00125',
-      'tourId': '3',
-      'title': 'Jeddah Waterfront Experience',
-      'guide': 'Mohammed Al-Zahrani',
-      'date': 'Nov 15, 2024',
-      'time': '02:00 PM - 3 hours',
-      'location': 'Jeddah',
-      'price': '280 SAR',
-      'status': 'Completed',
-      'image': 'images/tour_3.png',
-    },
-    {
-      'id': 'DLK-00126',
-      'tourId': '4',
-      'title': 'Edge of the World Adventure',
-      'guide': 'Salem Al-Qahtani',
-      'date': 'Oct 10, 2024',
-      'time': '08:00 AM - 8 hours',
-      'location': 'Riyadh Region',
-      'price': '520 SAR',
-      'status': 'Cancelled',
-      'image': 'images/tour_4.png',
-    },
-  ].obs;
+  @override
+  void onInit() {
+    super.onInit();
+    loadBookings();
+  }
+
+  Future<void> loadBookings() async {
+    try {
+      isLoading.value = true;
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('upcomingBookings')
+          .get();
+
+      final List<Map<String, dynamic>> loadedBookings = [];
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+
+        String guideName = '';
+
+        final tourId = data['tourId'];
+        if (tourId != null) {
+          final tourDoc = await FirebaseFirestore.instance
+              .collection('tourPackages')
+              .doc(tourId)
+              .get();
+
+          if (tourDoc.exists) {
+            final tourData = tourDoc.data() as Map<String, dynamic>;
+            final guideId = tourData['guideId'];
+
+            if (guideId != null && guideId.toString().isNotEmpty) {
+              final guideDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(guideId)
+                  .get();
+
+              if (guideDoc.exists) {
+                final guideData = guideDoc.data() as Map<String, dynamic>;
+                guideName = guideData['fullName'] ?? '';
+              }
+            }
+          }
+        }
+
+        loadedBookings.add({
+          'id': doc.id,
+          'tourId': data['tourId'] ?? '',
+          'title': data['tourTitle'] ?? '',
+          'guide': guideName,
+          'date': data['availableDates'] ?? '',
+          'time':
+              '${data['durationValue'] ?? ''} ${data['durationUnit'] ?? ''}',
+          'location': data['destination'] ?? '',
+          'price': '${data['price'] ?? ''} SAR',
+          'status': data['status'] ?? 'Upcoming',
+          'image': 'images/tour_1.png',
+        });
+      }
+
+      allBookings.assignAll(loadedBookings);
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to load bookings');
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   List<Map<String, dynamic>> get filteredBookings {
     if (selectedTab.value == 'All') {
       return allBookings;
     }
+
     return allBookings
         .where((booking) => booking['status'] == selectedTab.value)
         .toList();
@@ -68,7 +97,6 @@ class BookingsController extends GetxController {
   }
 
   void messageGuide(String bookingId) {
-    // TODO: Navigate to chat/message page
     Get.snackbar(
       'Message Guide',
       'Messaging functionality not yet implemented.',
@@ -76,10 +104,24 @@ class BookingsController extends GetxController {
   }
 
   void viewDetails(String bookingId) {
-    // TODO: Navigate to booking details page
-    Get.snackbar(
-      'View Details',
-      'Booking details functionality not yet implemented.',
-    );
+    final booking = allBookings.firstWhereOrNull((b) => b['id'] == bookingId);
+
+    if (booking == null) {
+      Get.snackbar('Error', 'Booking not found');
+      return;
+    }
+
+    final tourId = booking['tourId'];
+    if (tourId == null || tourId.toString().isEmpty) {
+      Get.snackbar('Error', 'Tour ID not found');
+      return;
+    }
+
+    Get.to(
+  () => PackageDetailsView(
+    packageId: tourId,
+    showBookingButton: false,
+  ),
+);
   }
 }

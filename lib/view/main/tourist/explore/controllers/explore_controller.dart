@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/services/user_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ExploreController extends GetxController {
-
   final PackagesService _packagesService = Get.find();
   final UserService _userService = Get.find();
 
@@ -26,10 +26,16 @@ class ExploreController extends GetxController {
 
   Stream<List<Map<String, dynamic>>>? packagesStream;
 
-  // Saudi Arabia cities covered by the app
   static const List<String> _saudiCities = [
-    'Riyadh', 'Jeddah', 'AlUla', 'Abha', 'Taif',
-    'Dammam', 'Makkah', 'Madinah', 'Diriyah',
+    'Riyadh',
+    'Jeddah',
+    'AlUla',
+    'Abha',
+    'Taif',
+    'Dammam',
+    'Makkah',
+    'Madinah',
+    'Diriyah',
   ];
 
   @override
@@ -42,8 +48,8 @@ class ExploreController extends GetxController {
 
     packagesStream = _packagesService.getAllPackagesStream();
 
-    packagesStream!.listen((data) {
-      tours.assignAll(data);
+    packagesStream!.listen((data) async {
+      await _loadToursWithFavorites(data);
     });
 
     _loadTouristProfile();
@@ -51,6 +57,38 @@ class ExploreController extends GetxController {
 
   Future<void> _loadTouristProfile() async {
     _touristProfile = await _userService.getCurrentUserData();
+  }
+
+  Future<void> _loadToursWithFavorites(List<Map<String, dynamic>> data) async {
+    final user = await _userService.getCurrentUserData();
+    final userId = user?['uid'];
+
+    if (userId == null || userId.toString().isEmpty) {
+      tours.assignAll(
+        data.map((tour) {
+          final updatedTour = Map<String, dynamic>.from(tour);
+          updatedTour['isFavorite'] = false;
+          return updatedTour;
+        }).toList(),
+      );
+      return;
+    }
+
+    final savedSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('savedTours')
+        .get();
+
+    final savedIds = savedSnapshot.docs.map((doc) => doc.id).toSet();
+
+    final updatedTours = data.map((tour) {
+      final updatedTour = Map<String, dynamic>.from(tour);
+      updatedTour['isFavorite'] = savedIds.contains(tour['id']);
+      return updatedTour;
+    }).toList();
+
+    tours.assignAll(updatedTours);
   }
 
   void toggleFilters() {
@@ -81,7 +119,32 @@ class ExploreController extends GetxController {
     selectedActivityType.value = activityType;
   }
 
-  void toggleFavorite(String tourId) {
+  Future<void> toggleFavorite(String tourId) async {
+    final userData = await _userService.getCurrentUserData();
+    final userId = userData?['uid'];
+
+    if (userId == null || userId.toString().isEmpty) {
+      Get.snackbar('Error', 'User not found');
+      return;
+    }
+
+    final savedTourRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('savedTours')
+        .doc(tourId);
+
+    final savedTourDoc = await savedTourRef.get();
+
+    if (savedTourDoc.exists) {
+      await savedTourRef.delete();
+    } else {
+      await savedTourRef.set({
+        'tourId': tourId,
+        'savedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
     final index = tours.indexWhere((tour) => tour['id'] == tourId);
     if (index != -1) {
       tours[index]['isFavorite'] = !(tours[index]['isFavorite'] ?? false);
@@ -89,12 +152,9 @@ class ExploreController extends GetxController {
     }
   }
 
-  /// Returns the filtered (and optionally AI-sorted) list of tours based on
-  /// all active filter settings.
   List<Map<String, dynamic>> get filteredTours {
     var result = tours.toList();
 
-    // --- Region filter ---
     if (selectedRegion.value != 'All Regions') {
       result = result.where((tour) {
         final dest = (tour['destination'] as String? ?? '').toLowerCase();
@@ -102,17 +162,14 @@ class ExploreController extends GetxController {
       }).toList();
     }
 
-    // --- Available Date filter ---
     if (selectedDate.value != 'Any Date') {
       result = result.where(_matchesDateFilter).toList();
     }
 
-    // --- Price Range filter ---
     if (selectedPriceRange.value != 'Any Price') {
       result = result.where(_matchesPriceFilter).toList();
     }
 
-    // --- Activity Type filter ---
     if (selectedActivityType.value != 'All Activities') {
       result = result.where((tour) {
         final actType = (tour['activityType'] as String? ?? '').toLowerCase();
@@ -120,7 +177,6 @@ class ExploreController extends GetxController {
       }).toList();
     }
 
-    // --- Search text filter ---
     if (searchText.value.isNotEmpty) {
       final query = searchText.value.toLowerCase();
       result = result.where((tour) {
@@ -130,22 +186,16 @@ class ExploreController extends GetxController {
       }).toList();
     }
 
-    // --- Near Me filter (based on tourist's country of residence) ---
     if (isNearMe.value) {
       result = _applyNearMeFilter(result);
     }
 
-    // --- AI Recommendations (sort by relevance to tourist profile) ---
     if (isAIRecommendations.value) {
       result = _applyAIRecommendations(result);
     }
 
     return result;
   }
-
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
 
   bool _matchesDateFilter(Map<String, dynamic> tour) {
     final availableDates = tour['availableDates'] as String?;
@@ -163,18 +213,15 @@ class ExploreController extends GetxController {
 
     switch (selectedDate.value) {
       case 'Today':
-        // Package must be available today
         return !today.isBefore(start) && !today.isAfter(end);
 
       case 'This Week':
-        // Package overlaps with the current calendar week (Mon–Sun)
         final weekStart = today.subtract(Duration(days: today.weekday - 1));
         final weekEnd = weekStart.add(const Duration(days: 6));
         return start.isBefore(weekEnd.add(const Duration(days: 1))) &&
             end.isAfter(weekStart.subtract(const Duration(days: 1)));
 
       case 'This Month':
-        // Package overlaps with the current month
         final monthStart = DateTime(today.year, today.month, 1);
         final monthEnd = DateTime(today.year, today.month + 1, 0);
         return start.isBefore(monthEnd.add(const Duration(days: 1))) &&
@@ -218,11 +265,9 @@ class ExploreController extends GetxController {
     }
   }
 
-  /// Near Me: show packages whose destination is in Saudi Arabia when the
-  /// tourist lives in Saudi Arabia; otherwise show packages for tourists
-  /// visiting (i.e., return all since the app covers Saudi Arabia only).
   List<Map<String, dynamic>> _applyNearMeFilter(
-      List<Map<String, dynamic>> list) {
+    List<Map<String, dynamic>> list,
+  ) {
     final country =
         (_touristProfile?['countryOfResidence'] as String? ?? '').toLowerCase();
 
@@ -231,11 +276,8 @@ class ExploreController extends GetxController {
         country.contains('المملكة');
 
     if (isInSaudi) {
-      // Tourist resides in Saudi Arabia – all destinations are "near"
       return list;
     } else {
-      // Tourist is from abroad – show packages whose destination is a
-      // recognised Saudi city (they are visiting Saudi Arabia)
       return list.where((tour) {
         final dest = (tour['destination'] as String? ?? '');
         return _saudiCities.any(
@@ -245,16 +287,9 @@ class ExploreController extends GetxController {
     }
   }
 
-  /// AI Recommendations: score each package against the tourist's profile and
-  /// return the list sorted by descending relevance score.
-  ///
-  /// Scoring dimensions:
-  ///  +3  each interest that matches the package's activityType or description
-  ///  +2  budget tier matches the package price range
-  ///  +1  travelPace keyword found in description / title
-  ///  +1  tripType keyword found in description / title
   List<Map<String, dynamic>> _applyAIRecommendations(
-      List<Map<String, dynamic>> list) {
+    List<Map<String, dynamic>> list,
+  ) {
     if (_touristProfile == null) return list;
 
     final budget =
@@ -271,24 +306,19 @@ class ExploreController extends GetxController {
     double scorePackage(Map<String, dynamic> tour) {
       double score = 0;
 
-      final actType =
-          (tour['activityType'] as String? ?? '').toLowerCase();
-      final desc =
-          (tour['tourDescription'] as String? ?? '').toLowerCase();
+      final actType = (tour['activityType'] as String? ?? '').toLowerCase();
+      final desc = (tour['tourDescription'] as String? ?? '').toLowerCase();
       final title = (tour['tourTitle'] as String? ?? '').toLowerCase();
       final priceStr = tour['price'] as String? ?? '';
       final price = double.tryParse(priceStr) ?? 0;
 
-      // Budget match
       if ((budget == 'budget' || budget == 'low') && price < 300) score += 2;
       if ((budget == 'moderate' || budget == 'medium') &&
           price >= 300 &&
           price <= 500) score += 2;
       if ((budget == 'luxury' || budget == 'high') && price > 500) score += 2;
 
-      // Interest match against activityType, description, and title
       for (final interest in interests) {
-        // Exact activity type match scores highest
         if (actType == interest) {
           score += 3;
         } else if (_containsWholeWord(actType, interest) ||
@@ -299,13 +329,11 @@ class ExploreController extends GetxController {
         }
       }
 
-      // Travel pace keyword match
       if (travelPace.isNotEmpty &&
           (desc.contains(travelPace) || title.contains(travelPace))) {
         score += 1;
       }
 
-      // Trip type keyword match
       if (tripType.isNotEmpty &&
           (desc.contains(tripType) || title.contains(tripType))) {
         score += 1;
@@ -319,14 +347,14 @@ class ExploreController extends GetxController {
         .toList();
 
     scored.sort(
-        (a, b) => (b['score'] as double).compareTo(a['score'] as double));
+      (a, b) => (b['score'] as double).compareTo(a['score'] as double),
+    );
 
     return scored
         .map((e) => e['tour'] as Map<String, dynamic>)
         .toList();
   }
 
-  /// Returns true if [text] contains [word] as a whole word (space-delimited).
   bool _containsWholeWord(String text, String word) {
     if (word.isEmpty) return false;
     final words = text.split(RegExp(r'\s+'));
