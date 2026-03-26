@@ -6,6 +6,7 @@ import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dar
 class TourActivity {
   String id;
   String activityName;
+  String activityType;
   String xPosition;
   String yPosition;
   String question;
@@ -20,6 +21,7 @@ class TourActivity {
   TourActivity({
     required this.id,
     this.activityName = '',
+    this.activityType = '',
     this.xPosition = '50',
     this.yPosition = '50',
     this.question = '',
@@ -305,6 +307,24 @@ class CreatePackageController extends GetxController {
       activities[index].activityName = value;
     }
   }
+  void updateActivityType(int index, String value) {
+  final current = activities[index];
+
+  final updated = TourActivity(
+    id: current.id,
+    activityName: current.activityName,
+    activityType: value,
+    xPosition: current.xPosition,
+    yPosition: current.yPosition,
+    question: current.question,
+    questionType: current.questionType,
+    answerOptions: List<String>.from(current.answerOptions),
+    correctAnswer: current.correctAnswer,
+  );
+
+  activities[index] = updated;
+}
+
 
   void updateActivityXPosition(int index, String value) {
     if (index >= 0 && index < activities.length) {

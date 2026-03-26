@@ -1,11 +1,11 @@
 import 'package:get/get.dart';
-import 'package:tour_app/services/packages_service.dart';
-import 'package:tour_app/services/user_service.dart';
-import 'package:tour_app/services/recommendation_service.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
 import 'package:tour_app/view/main/tourist/explore/views/explore_view.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/bookings_view.dart';
 import 'package:tour_app/view/main/tourist/profile/views/profile_view.dart';
+import 'package:tour_app/services/packages_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TouristHomeController extends GetxController {
   final RxInt currentBottomNavIndex = 0.obs;
@@ -18,56 +18,17 @@ class TouristHomeController extends GetxController {
   final RxInt rewardsPoints = 350.obs;
 
   final PackagesService _packagesService = Get.find<PackagesService>();
-  final UserService _userService = Get.find<UserService>();
 
-  final RxList<Map<String, dynamic>> aiRecommendedPackages =
-      <Map<String, dynamic>>[].obs;
-  final RxBool isLoadingRecommendations = false.obs;
-  Map<String, dynamic>? _touristProfile;
+  RxList<Map<String, dynamic>> recommendedTours = <Map<String, dynamic>>[].obs;
+  RxList<String> userInterests = <String>[].obs;
 
   @override
-  void onInit() {
-    super.onInit();
-    _loadAIRecommendedPackages();
-  }
+void onInit() async {
+  super.onInit();
 
-  Future<void> _loadAIRecommendedPackages() async {
-    try {
-      isLoadingRecommendations.value = true;
-
-      // Load tourist profile
-      _touristProfile = await _userService.getCurrentUserData();
-
-      if (_touristProfile == null) {
-        isLoadingRecommendations.value = false;
-        return;
-      }
-
-      // Get all packages
-      final allPackages = await _packagesService.getAllPackages();
-
-      // Score and sort packages using AI recommendation
-      final scoredPackages = allPackages.map((package) {
-        final score = RecommendationService.scorePackageForTourist(
-          package: package,
-          touristProfile: _touristProfile!,
-          selectedInterest: '',
-        );
-        return {...package, 'recommendationScore': score};
-      }).toList();
-
-      // Sort by score (highest first) and take top 3
-      scoredPackages.sort((a, b) =>
-          (b['recommendationScore'] as num).compareTo(a['recommendationScore'] as num));
-
-      aiRecommendedPackages.assignAll(scoredPackages.take(3).toList());
-
-      isLoadingRecommendations.value = false;
-    } catch (e) {
-      isLoadingRecommendations.value = false;
-      print('Error loading AI recommendations: $e');
-    }
-  }
+  await loadUserInterests(); 
+  loadTours();
+}
 
   void changeBottomNavIndex(int index) {
     if (currentBottomNavIndex.value == index) return;
@@ -90,15 +51,58 @@ class TouristHomeController extends GetxController {
     }
   }
 
-  void viewRewards() {
-    // TODO: Navigate to rewards page
+  void viewRewards() {}
+  void viewMyRewards() {}
+  void openSettings() {}
+
+  void loadTours() {
+    _packagesService.getAllPackagesStream().listen((tours) {
+      calculateRecommendations(tours);
+    });
   }
 
-  void viewMyRewards() {
-    // TODO: Navigate to my rewards page
+  Future<void> loadUserInterests() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (doc.exists) {
+      final data = doc.data();
+      userInterests.value =
+          List<String>.from(data?['interests'] ?? []);
+    }
   }
 
-  void openSettings() {
-    // TODO: Navigate to settings page
+ void calculateRecommendations(List<Map<String, dynamic>> tours) {
+
+  List<Map<String, dynamic>> scoredTours = [];
+
+  for (var tour in tours) {
+
+    int score = 0;
+
+    List activities = tour['activities'] ?? [];
+
+    for (var activity in activities) {
+
+      String type = activity['activityType'] ?? '';
+
+      if (userInterests.contains(type)) {
+        score++;
+      }
+
+    }
+
+    tour['score'] = score;
+    scoredTours.add(tour);
   }
+
+  scoredTours.sort((a, b) => b['score'].compareTo(a['score']));
+
+  recommendedTours.value = scoredTours.take(3).toList();
+}
 }

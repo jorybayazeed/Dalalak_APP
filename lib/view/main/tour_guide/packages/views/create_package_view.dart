@@ -8,11 +8,11 @@ class CreatePackageView extends StatelessWidget {
   final String? packageId;
 
   const CreatePackageView({super.key, this.packageId});
-
+  
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(CreatePackageController(packageId: packageId));
-
+    final RxInt currentStep = 0.obs;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F0E8),
       body: SafeArea(
@@ -47,6 +47,16 @@ class CreatePackageView extends StatelessWidget {
                 ],
               ),
             ),
+            Obx(() => Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+            _stepItem("Info", 0, currentStep.value),
+            _stepItem("Booking", 1, currentStep.value),
+            _stepItem("Activities", 2, currentStep.value),
+            ],
+             )
+            ),
+            SizedBox(height: 20.h),
             Expanded(
               child: SingleChildScrollView(
                 child: Container(
@@ -78,360 +88,236 @@ class CreatePackageView extends StatelessWidget {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      SizedBox(height: 24.h),
+                    Obx(() {
+                     if (currentStep.value == 0) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      /// 🟢 STEP 1 (General Info)
+      SizedBox(height: 24.h),
+
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: _buildTextField(
+          label: 'Tour Title *',
+          hintText: 'e.g., Historical AlUla Adventure',
+          controller: controller.tourTitleController,
+          onChanged: (value) {
+            controller.tourTitle.value = value;
+          },
+        ),
+      ),
+
+      SizedBox(height: 20.h),
+
+      Obx(() => _buildDropdownField(
+            label: 'Destination *',
+            hintText: 'Select destination',
+            value: controller.selectedDestination.value.isEmpty
+                ? null
+                : controller.selectedDestination.value,
+            items: controller.destinations,
+            onChanged: (value) {
+              if (value != null) {
+                controller.setDestination(value);
+              }
+            },
+          )),
+
+      SizedBox(height: 20.h),
+
+      Text(
+        'Tour Description *',
+        style: GoogleFonts.inter(
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+
+      SizedBox(height: 8.h),
+
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: TextField(
+          controller: controller.tourDescriptionController,
+          maxLines: 5,
+          onChanged: (value) =>
+              controller.setTourDescription(value),
+        ),
+      ),
+    ],
+  );
+}
+
+else if (currentStep.value == 1) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      /// 🟡 STEP 2 (Booking)
+
+      SizedBox(height: 24.h),
+
+      Text('Duration *'),
+      SizedBox(height: 8.h),
+
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller.durationValueController,
+              keyboardType: TextInputType.number,
+              onChanged: (value) =>
+                  controller.setDurationValue(value),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Obx(() => DropdownButton<String>(
+                  value: controller.durationUnit.value,
+                  items: controller.durationUnits
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      controller.setDurationUnit(v);
+                    }
+                  },
+                )),
+          ),
+        ],
+      ),
+
+      SizedBox(height: 20.h),
+
+      _buildTextField(
+        label: 'Price (SAR) *',
+        hintText: '500',
+        controller: controller.priceController,
+        onChanged: controller.setPrice,
+      ),
+
+      SizedBox(height: 20.h),
+
+      _buildTextField(
+        label: 'Max Group Size *',
+        hintText: '15',
+        controller: controller.maxGroupSizeController,
+        onChanged: controller.setMaxGroupSize,
+      ),
+
+      SizedBox(height: 20.h),
+
+      _buildTextField(
+        label: 'Available Dates',
+        hintText: 'Select dates',
+        controller: controller.selectedDatesController,
+        readOnly: true,
+        onTap: () => controller.selectDates(context),
+        onChanged: controller.setSelectedDates,
+      ),
+    ],
+  );
+}
+
+else {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      /// 🔵 STEP 3 (Activities + Publish)
+
+      SizedBox(height: 24.h),
+
+      /// Activities Section (نفس كودك)
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Tour Activities & Gamification',
+                  style: GoogleFonts.inter(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: controller.addActivity,
+                child: Text("Add Activity"),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 20.h),
+
+          Obx(() {
+            if (controller.activities.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return Column(
+              children: List.generate(
+                controller.activities.length,
+                (index) => _buildActivityCard(
+                  context,
+                  controller,
+                  index,
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+
+      SizedBox(height: 32.h),
+    ],
+  );
+}
+}),
+SizedBox(height: 24.h),  
+Obx(() => Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+ children: [
+
+  /// Back 
+  if (currentStep.value > 0)
+    ElevatedButton(
+      onPressed: () {
+        currentStep.value--;
+      },
+      child: Text("Back"),
+    )
+  else
+    SizedBox(), 
+
+  /// Next / Publish 
+  ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: currentStep.value == 2
+          ? const Color(0xFF00A86B)
+          : null,
+    ),
+    onPressed: () {
+      if (currentStep.value < 2) {
+        currentStep.value++;
+      } else {
+        controller.publishPackage();
+      }
+    },
+    child: Text(
+      currentStep.value == 2 ? "Publish" : "Next",
+    ),
+  ),
+], 
+)),
                       
-                      Directionality(
-                          textDirection: TextDirection.ltr,
-                          child: _buildTextField(
-                            label: 'Tour Title *',
-                            hintText: 'e.g., Historical AlUla Adventure',
-                            controller: controller.tourTitleController,
-                            onChanged: (value) {
-                              controller.tourTitle.value = value;
-                            },
-                          ),
-                        ),
-                      
-                      SizedBox(height: 20.h),
-                      Obx(
-                        () => _buildDropdownField(
-                          label: 'Destination *',
-                          hintText: 'Select destination',
-                          value: controller.selectedDestination.value.isEmpty
-                              ? null
-                              : controller.selectedDestination.value,
-                          items: controller.destinations,
-                          onChanged: (value) {
-                            if (value != null) {
-                              controller.setDestination(value);
-                            }
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 20.h),
-                      Obx(
-                        () => _buildDropdownField(
-                          label: 'Activity Type',
-                          hintText: 'Select activity type',
-                          value: controller.selectedActivityType.value.isEmpty
-                              ? null
-                              : controller.selectedActivityType.value,
-                          items: controller.activityTypes,
-                          onChanged: (value) {
-                            if (value != null) {
-                              controller.setActivityType(value);
-                            }
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 20.h),
-                      Row(
-                        children: [
-                          Text(
-                            'Duration *',
-                            style: GoogleFonts.inter(
-                              color: Colors.black,
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8.h),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextField(
-                              controller: controller.durationValueController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                hintText: '3',
-                                filled: true,
-                                fillColor: const Color(0xFFF5F5F5),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16.w,
-                                  vertical: 16.h,
-                                ),
-                              ),
-                              style: GoogleFonts.inter(
-                                fontSize: 16.sp,
-                                color: Colors.black,
-                              ),
-                              onChanged: (value) =>
-                                  controller.setDurationValue(value),
-                            ),
-                          ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            flex: 3,
-                            child: Obx(
-                              () => Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F5F5),
-                                  borderRadius: BorderRadius.circular(12.r),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: controller.durationUnit.value,
-                                    isExpanded: true,
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 16.w,
-                                    ),
-                                    items: controller.durationUnits
-                                        .map(
-                                          (unit) => DropdownMenuItem(
-                                            value: unit,
-                                            child: Text(
-                                              unit,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 16.sp,
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        controller.setDurationUnit(value);
-                                      }
-                                    },
-                                    icon: Icon(
-                                      Icons.arrow_drop_down,
-                                      color: Colors.black,
-                                      size: 24.sp,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20.h),
-                      _buildTextField(
-                        label: 'Price (SAR) *',
-                        hintText: '500',
-                        controller: controller.priceController,
-                        keyboardType: TextInputType.number,
-                        prefixIcon: Icon(
-                          Icons.attach_money,
-                          color: const Color(0xFF666666),
-                          size: 20.sp,
-                        ),
-                        onChanged: (value) => controller.setPrice(value),
-                      ),
-                      SizedBox(height: 20.h),
-                      _buildTextField(
-                        label: 'Max Group Size *',
-                        hintText: '15',
-                        controller: controller.maxGroupSizeController,
-                        keyboardType: TextInputType.number,
-                        prefixIcon: Icon(
-                          Icons.people,
-                          color: const Color(0xFF666666),
-                          size: 20.sp,
-                        ),
-                        onChanged: (value) =>
-                            controller.setMaxGroupSize(value),
-                      ),
-                      SizedBox(height: 20.h),
-                      _buildTextField(
-                        label: 'Available Dates',
-                        hintText: 'Select dates',
-                        controller: controller.selectedDatesController,
-                        prefixIcon: Icon(
-                          Icons.calendar_today,
-                          color: const Color(0xFF666666),
-                          size: 20.sp,
-                        ),
-                        readOnly: true,
-                        onTap: () {
-                          controller.selectDates(context);
-                        },
-                        onChanged: (value) {
-                          controller.setSelectedDates(value);
-                        },
-                      ),
-                      SizedBox(height: 20.h),
-                      Text(
-                        'Tour Description *',
-                        style: GoogleFonts.inter(
-                          color: Colors.black,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 8.h),
-                      Directionality(
-                          textDirection: TextDirection.ltr,
-                          child: TextField(
-                          controller: controller.tourDescriptionController,
-                            maxLines: 5,
-                            textDirection: TextDirection.ltr,
-                            textAlign: TextAlign.left,
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Describe what makes your tour special...',
-                              hintStyle: GoogleFonts.inter(
-                                color: const Color(0xFF999999),
-                                fontSize: 16.sp,
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFFF5F5F5),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: EdgeInsets.all(16.w),
-                            ),
-                            style: GoogleFonts.inter(
-                              fontSize: 16.sp,
-                              color: Colors.black,
-                            ),
-                            onChanged: (value) =>
-                                controller.setTourDescription(value),
-                          ),
-                        ),
-                      
-                      SizedBox(height: 32.h),
-                      // Tour Activities & Gamification Section
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Tour Activities & Gamification',
-                                      style: GoogleFonts.inter(
-                                        color: Colors.black,
-                                        fontSize: 18.sp,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12.w),
-                                  GestureDetector(
-                                    onTap: controller.addActivity,
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16.w,
-                                        vertical: 12.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF00A86B),
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.add,
-                                            color: Colors.white,
-                                            size: 20.sp,
-                                          ),
-                                          SizedBox(width: 6.w),
-                                          Text(
-                                            'Add Activity',
-                                            style: GoogleFonts.inter(
-                                              color: Colors.white,
-                                              fontSize: 14.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                'Add activities that will appear as pins on the interactive map with questions for tourists.',
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFF666666),
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 20.h),
-                          // Activities List
-                          Obx(() {
-                            if (controller.activities.isEmpty) {
-                              return const SizedBox.shrink();
-                            }
-                            return Column(
-                              children: List.generate(
-                                controller.activities.length,
-                                (index) => _buildActivityCard(
-                                  context,
-                                  controller,
-                                  index,
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                      SizedBox(height: 32.h),
-                      Obx(
-                        () => Container(
-                          width: double.infinity,
-                          height: 56.h,
-                          decoration: BoxDecoration(
-                            color: controller.isLoading.value
-                                ? const Color(0xFFCCCCCC)
-                                : const Color(0xFF00A86B),
-                            borderRadius: BorderRadius.circular(30.r),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: controller.isLoading.value
-                                  ? null
-                                  : controller.publishPackage,
-                              borderRadius: BorderRadius.circular(30.r),
-                              child: Center(
-                                child: controller.isLoading.value
-                                    ? SizedBox(
-                                        width: 24.w,
-                                        height: 24.h,
-                                        child: const CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        packageId == null
-                                            ? 'Publish Tour Package'
-                                            : 'Update Tour Package',
-                                        style: GoogleFonts.inter(
-                                          color: Colors.white,
-                                          fontSize: 18.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 24.h),
                     ],
                   ),
                 ),
@@ -670,7 +556,19 @@ class CreatePackageView extends StatelessWidget {
             hintText: 'e.g., Elephant Rock',
             initialValue: activity.activityName,
             onChanged: (value) => controller.updateActivityName(index, value),
-          ),
+          ),_buildDropdownField(
+            label: 'Activity Type',
+            hintText: 'Select activity type',
+            value: activity.activityType.isEmpty ? null : activity.activityType,
+            items: controller.activityTypes,
+            onChanged: (value) {
+            if (value != null) {
+            controller.updateActivityType(index, value);
+    }
+  },
+),    
+          // Position Fields
+
           SizedBox(height: 16.h),
 
           // Position Fields
@@ -843,9 +741,23 @@ Obx(() {
     ],
   );
 }),
+
           ],
         ),
       );
     });
   }
+}
+Widget _stepItem(String title, int step, int currentStep) {
+  return Column(
+    children: [
+      CircleAvatar(
+        radius: 10,
+        backgroundColor:
+            currentStep >= step ? const Color(0xFF00A86B) : Colors.grey,
+      ),
+      SizedBox(height: 4.h),
+      Text(title, style: TextStyle(fontSize: 12.sp)),
+    ],
+  );
 }

@@ -275,11 +275,7 @@ SizedBox(height: 20.h),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                SizedBox(height: 6.h),
-                                Text(
-                                  activity['question'] ?? '',
-                                  style: GoogleFonts.inter(fontSize: 13.sp),
-                                ),
+
                               ],
                             ),
                           );
