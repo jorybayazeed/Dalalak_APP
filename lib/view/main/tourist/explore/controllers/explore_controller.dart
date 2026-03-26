@@ -16,8 +16,6 @@ class ExploreController extends GetxController {
   final RxString selectedPriceRange = 'Any Price'.obs;
   final RxString selectedActivityType = 'All Activities'.obs;
 
-  final RxBool isAIRecommendations = false.obs;
-  final RxBool isNearMe = false.obs;
   final RxBool isFiltersVisible = false.obs;
 
   final RxList<Map<String, dynamic>> tours = <Map<String, dynamic>>[].obs;
@@ -25,18 +23,6 @@ class ExploreController extends GetxController {
   Map<String, dynamic>? _touristProfile;
 
   Stream<List<Map<String, dynamic>>>? packagesStream;
-
-  static const List<String> _saudiCities = [
-    'Riyadh',
-    'Jeddah',
-    'AlUla',
-    'Abha',
-    'Taif',
-    'Dammam',
-    'Makkah',
-    'Madinah',
-    'Diriyah',
-  ];
 
   @override
   void onInit() {
@@ -93,14 +79,6 @@ class ExploreController extends GetxController {
 
   void toggleFilters() {
     isFiltersVisible.value = !isFiltersVisible.value;
-  }
-
-  void toggleAIRecommendations() {
-    isAIRecommendations.value = !isAIRecommendations.value;
-  }
-
-  void toggleNearMe() {
-    isNearMe.value = !isNearMe.value;
   }
 
   void selectRegion(String region) {
@@ -186,14 +164,6 @@ class ExploreController extends GetxController {
       }).toList();
     }
 
-    if (isNearMe.value) {
-      result = _applyNearMeFilter(result);
-    }
-
-    if (isAIRecommendations.value) {
-      result = _applyAIRecommendations(result);
-    }
-
     return result;
   }
 
@@ -265,101 +235,7 @@ class ExploreController extends GetxController {
     }
   }
 
-  List<Map<String, dynamic>> _applyNearMeFilter(
-    List<Map<String, dynamic>> list,
-  ) {
-    final country =
-        (_touristProfile?['countryOfResidence'] as String? ?? '').toLowerCase();
 
-    final isInSaudi = country.contains('saudi') ||
-        country.contains('ksa') ||
-        country.contains('المملكة');
-
-    if (isInSaudi) {
-      return list;
-    } else {
-      return list.where((tour) {
-        final dest = (tour['destination'] as String? ?? '');
-        return _saudiCities.any(
-          (city) => city.toLowerCase() == dest.toLowerCase(),
-        );
-      }).toList();
-    }
-  }
-
-  List<Map<String, dynamic>> _applyAIRecommendations(
-    List<Map<String, dynamic>> list,
-  ) {
-    if (_touristProfile == null) return list;
-
-    final budget =
-        (_touristProfile!['travelBudget'] as String? ?? '').toLowerCase();
-    final interests = (_touristProfile!['interests'] as List<dynamic>?)
-            ?.map((e) => e.toString().toLowerCase())
-            .toList() ??
-        [];
-    final travelPace =
-        (_touristProfile!['travelPace'] as String? ?? '').toLowerCase();
-    final tripType =
-        (_touristProfile!['tripType'] as String? ?? '').toLowerCase();
-
-    double scorePackage(Map<String, dynamic> tour) {
-      double score = 0;
-
-      final actType = (tour['activityType'] as String? ?? '').toLowerCase();
-      final desc = (tour['tourDescription'] as String? ?? '').toLowerCase();
-      final title = (tour['tourTitle'] as String? ?? '').toLowerCase();
-      final priceStr = tour['price'] as String? ?? '';
-      final price = double.tryParse(priceStr) ?? 0;
-
-      if ((budget == 'budget' || budget == 'low') && price < 300) score += 2;
-      if ((budget == 'moderate' || budget == 'medium') &&
-          price >= 300 &&
-          price <= 500) score += 2;
-      if ((budget == 'luxury' || budget == 'high') && price > 500) score += 2;
-
-      for (final interest in interests) {
-        if (actType == interest) {
-          score += 3;
-        } else if (_containsWholeWord(actType, interest) ||
-            _containsWholeWord(interest, actType)) {
-          score += 2;
-        } else if (desc.contains(interest) || title.contains(interest)) {
-          score += 1;
-        }
-      }
-
-      if (travelPace.isNotEmpty &&
-          (desc.contains(travelPace) || title.contains(travelPace))) {
-        score += 1;
-      }
-
-      if (tripType.isNotEmpty &&
-          (desc.contains(tripType) || title.contains(tripType))) {
-        score += 1;
-      }
-
-      return score;
-    }
-
-    final scored = list
-        .map((tour) => {'tour': tour, 'score': scorePackage(tour)})
-        .toList();
-
-    scored.sort(
-      (a, b) => (b['score'] as double).compareTo(a['score'] as double),
-    );
-
-    return scored
-        .map((e) => e['tour'] as Map<String, dynamic>)
-        .toList();
-  }
-
-  bool _containsWholeWord(String text, String word) {
-    if (word.isEmpty) return false;
-    final words = text.split(RegExp(r'\s+'));
-    return words.any((w) => w == word);
-  }
 
   @override
   void onClose() {
