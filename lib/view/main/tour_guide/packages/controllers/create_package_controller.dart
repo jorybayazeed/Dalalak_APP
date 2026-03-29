@@ -34,13 +34,13 @@ class TourActivity {
   Map<String, dynamic> toMap() {
     return {
       'activityName': activityName,
+      'activityType': activityType,
       'xPosition': xPosition,
       'yPosition': yPosition,
       'question': question,
       'questionType': questionType,
       'answerOptions': answerOptions,
       'correctAnswer': correctAnswer,
-      
     };
   }
 
@@ -48,6 +48,7 @@ class TourActivity {
     return TourActivity(
       id: id,
       activityName: map['activityName'] as String? ?? '',
+      activityType: map['activityType'] as String? ?? '',
       xPosition: map['xPosition'] as String? ?? '50',
       yPosition: map['yPosition'] as String? ?? '50',
       question: map['question'] as String? ?? '',
@@ -58,7 +59,6 @@ class TourActivity {
               .toList() ??
           ['', '', '', ''],
       correctAnswer: map['correctAnswer'] ?? '',
-      
     );
   }
 }
