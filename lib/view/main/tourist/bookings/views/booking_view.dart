@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/booking_success_view.dart';
+import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 
 class BookingView extends StatefulWidget {
   final Map<String, dynamic> tour;
@@ -125,6 +126,10 @@ class _BookingViewState extends State<BookingView> {
         'bookedAt': Timestamp.now(),
         'status': 'Upcoming',
       });
+
+      if (Get.isRegistered<TouristHomeController>()) {
+        await Get.find<TouristHomeController>().loadCurrentTours();
+      }
 
       Get.off(
         () => BookingSuccessView(

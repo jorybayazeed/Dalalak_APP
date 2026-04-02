@@ -12,7 +12,7 @@ class BookingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(BookingsController());
-    final homeController = Get.put(TouristHomeController());
+    final homeController = Get.find<TouristHomeController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       homeController.currentBottomNavIndex.value = 2;

@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
-import 'package:tour_app/view/main/tourist/profile/views/profile_view.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/bookings_view.dart';
 
 class BookingSuccessView extends StatelessWidget {

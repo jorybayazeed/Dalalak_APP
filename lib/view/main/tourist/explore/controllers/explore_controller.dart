@@ -20,8 +20,6 @@ class ExploreController extends GetxController {
 
   final RxList<Map<String, dynamic>> tours = <Map<String, dynamic>>[].obs;
 
-  Map<String, dynamic>? _touristProfile;
-
   Stream<List<Map<String, dynamic>>>? packagesStream;
 
   @override
@@ -37,12 +35,6 @@ class ExploreController extends GetxController {
     packagesStream!.listen((data) async {
       await _loadToursWithFavorites(data);
     });
-
-    _loadTouristProfile();
-  }
-
-  Future<void> _loadTouristProfile() async {
-    _touristProfile = await _userService.getCurrentUserData();
   }
 
   Future<void> _loadToursWithFavorites(List<Map<String, dynamic>> data) async {

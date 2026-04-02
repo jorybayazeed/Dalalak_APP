@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:tour_app/view/main/tour_guide/packages/controllers/create_package_controller.dart';
 
 class CreatePackageView extends StatelessWidget {
@@ -509,6 +511,7 @@ Obx(() => Row(
       return const SizedBox.shrink();
     }
     final activity = controller.activities[index];
+    final mapController = MapController();
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.all(16.w),
@@ -556,7 +559,20 @@ Obx(() => Row(
             hintText: 'e.g., Elephant Rock',
             initialValue: activity.activityName,
             onChanged: (value) => controller.updateActivityName(index, value),
-          ),_buildDropdownField(
+          ),
+          SizedBox(height: 12.h),
+
+          // Activity Place
+          _buildInitialValueTextField(
+            label: 'Activity Place',
+            hintText: 'e.g., Al Shati, Jeddah 23613',
+            initialValue: activity.activityPlace,
+            onChanged: (value) => controller.updateActivityPlace(index, value),
+          ),
+
+          SizedBox(height: 12.h),
+
+          _buildDropdownField(
             label: 'Activity Type',
             hintText: 'Select activity type',
             value: activity.activityType.isEmpty ? null : activity.activityType,
@@ -571,31 +587,245 @@ Obx(() => Row(
 
           SizedBox(height: 16.h),
 
-          // Position Fields
-          Row(
-            children: [
-              Expanded(
-                child: _buildInitialValueTextField(
-                  label: 'X Position (%)',
-                  hintText: '50',
-                  initialValue: activity.xPosition,
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) =>
-                      controller.updateActivityXPosition(index, value),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: _buildInitialValueTextField(
-                  label: 'Y Position (%)',
-                  hintText: '50',
-                  initialValue: activity.yPosition,
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) =>
-                      controller.updateActivityYPosition(index, value),
-                ),
-              ),
-            ],
+          Obx(
+            () {
+              if (index >= controller.activities.length) {
+                return const SizedBox.shrink();
+              }
+
+              final currentActivity = controller.activities[index];
+              final isMapExpanded = controller.expandedActivityMapIds
+                  .contains(currentActivity.id);
+
+              LatLng? selectedPoint;
+              if (currentActivity.latitude != null &&
+                  currentActivity.longitude != null) {
+                selectedPoint =
+                    LatLng(currentActivity.latitude!, currentActivity.longitude!);
+              }
+
+              final preferredCenter = controller.getPreferredMapCenter(
+                selectedPoint: selectedPoint,
+              );
+              final preferredZoom = controller.getPreferredMapZoom(
+                selectedPoint: selectedPoint,
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40.h,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          controller.toggleActivityMap(currentActivity.id),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF1976D2),
+                        side: BorderSide(
+                          color: const Color(0xFF1976D2).withOpacity(0.3),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                      ),
+                      icon: const Icon(Icons.map_outlined),
+                      label: Text(
+                        isMapExpanded ? 'Hide Map' : 'Pick Location on Map',
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (isMapExpanded) ...[
+                    SizedBox(height: 12.h),
+                    Container(
+                      width: double.infinity,
+                      height: 220.h,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12.r),
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              left: 10.w,
+                              right: 10.w,
+                              top: 10.h,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10.w,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.92),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(
+                                    color: const Color(0xFF00A86B)
+                                        .withOpacity(0.25),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller:
+                                            controller.activityPlaceSearchControllerFor(
+                                          currentActivity.id,
+                                          fallbackText: currentActivity.activityPlace,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          border: InputBorder.none,
+                                          hintText: 'Search place...',
+                                        ),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black,
+                                        ),
+                                        textInputAction: TextInputAction.search,
+                                        onChanged: (value) {
+                                          controller.setActivityPlaceSearchDraft(
+                                            activityId: currentActivity.id,
+                                            value: value,
+                                          );
+                                        },
+                                        onSubmitted: (value) async {
+                                          controller.setActivityPlaceSearchDraft(
+                                            activityId: currentActivity.id,
+                                            value: value,
+                                          );
+                                          await controller
+                                              .submitActivityPlaceSearch(index);
+                                        },
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () async {
+                                        await controller
+                                            .submitActivityPlaceSearch(index);
+                                      },
+                                      icon: const Icon(Icons.search),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            FlutterMap(
+                              key: ValueKey(
+                                '${currentActivity.latitude}_${currentActivity.longitude}_${controller.selectedDestination.value}_${controller.selectedRegion.value}',
+                              ),
+                              mapController: mapController,
+                              options: MapOptions(
+                                initialCenter: preferredCenter,
+                                initialZoom: preferredZoom,
+                                interactionOptions: const InteractionOptions(
+                                  flags: InteractiveFlag.all,
+                                ),
+                                onPositionChanged: (pos, _) {
+                                  controller.updateActivityDraftCenter(
+                                    activityId: currentActivity.id,
+                                    center: pos.center,
+                                  );
+                                },
+                                onTap: (_, point) {
+                                  controller.updateActivityLocation(index, point);
+                                  mapController.move(point, 14);
+                                },
+                              ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate:
+                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  userAgentPackageName: 'tour_app',
+                                ),
+                                if (selectedPoint != null)
+                                  MarkerLayer(
+                                    markers: [
+                                      Marker(
+                                        point: selectedPoint,
+                                        width: 40.w,
+                                        height: 40.h,
+                                        child: Icon(
+                                          Icons.place,
+                                          color: Colors.red,
+                                          size: 34.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+
+                            // Crosshair for precise placement
+                            IgnorePointer(
+                              child: Center(
+                                child: Icon(
+                                  Icons.add,
+                                  size: 26.sp,
+                                  color: Colors.black.withOpacity(0.6),
+                                ),
+                              ),
+                            ),
+
+                            Positioned(
+                              right: 10.w,
+                              bottom: 10.h,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  controller.setActivityMarkerToDraftCenter(index);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00A86B),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w,
+                                    vertical: 10.h,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Set Marker Here',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      selectedPoint == null
+                          ? 'Tap on the map to set this activity location'
+                          : 'Selected: ${selectedPoint.latitude.toStringAsFixed(5)}, ${selectedPoint.longitude.toStringAsFixed(5)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: const Color(0xFF666666),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Builder(
+                      builder: (context) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          mapController.move(preferredCenter, preferredZoom);
+                        });
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
           SizedBox(height: 16.h),
 
@@ -741,6 +971,69 @@ Obx(() {
     ],
   );
 }),
+
+          SizedBox(height: 16.h),
+
+          Obx(() {
+            if (index >= controller.activities.length) {
+              return const SizedBox.shrink();
+            }
+            final currentActivity = controller.activities[index];
+            final enabled = currentActivity.photoChallengeEnabled;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Photo Challenge',
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Enable photo challenge for this activity',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: enabled,
+                        activeColor: const Color(0xFF00A86B),
+                        onChanged: (v) => controller
+                            .updateActivityPhotoChallengeEnabled(index, v),
+                      ),
+                    ],
+                  ),
+                ),
+                if (enabled) ...[
+                  SizedBox(height: 12.h),
+                  _buildInitialValueTextField(
+                    label: 'Challenge Text',
+                    hintText: 'e.g., Take a selfie at the Corniche',
+                    initialValue: currentActivity.photoChallengeText,
+                    maxLines: 2,
+                    onChanged: (value) => controller
+                        .updateActivityPhotoChallengeText(index, value),
+                  ),
+                ],
+              ],
+            );
+          }),
 
           ],
         ),
