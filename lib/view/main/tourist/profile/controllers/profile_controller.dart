@@ -12,39 +12,25 @@ class TouristProfileController extends GetxController {
 
   final RxMap<String, dynamic> userData = <String, dynamic>{}.obs;
 
-  final RxInt toursCompleted = 5.obs;
+  final RxInt toursCompleted = 0.obs;
   final RxInt savedTours = 0.obs;
   final RxInt rewardPoints = 350.obs;
 
-  final RxList<Map<String, dynamic>> completedTours = [
-    {
-      'id': '1',
-      'title': 'AlUla Heritage Tour',
-      'guide': 'Ahmed Al-Rashid',
-      'rating': 5.0,
-      'completionDate': 'Oct 15, 2024',
-      'image': 'images/tour_1.png',
-    },
-    {
-      'id': '2',
-      'title': 'Riyadh City Explorer',
-      'guide': 'Fatima Al-Otaibi',
-      'rating': 3.0,
-      'completionDate': 'Sep 20, 2024',
-      'image': 'images/tour_2.png',
-    },
-  ].obs;
+  final RxList<Map<String, dynamic>> completedTours =
+      <Map<String, dynamic>>[].obs;
 
   final RxList<Map<String, dynamic>> savedToursList =
       <Map<String, dynamic>>[].obs;
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _savedToursSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _completedToursSub;
 
   @override
   void onInit() {
     super.onInit();
     loadUserData();
     listenToSavedTours();
+    listenToCompletedTours();
   }
 
   Future<void> loadUserData() async {
@@ -114,6 +100,77 @@ class TouristProfileController extends GetxController {
     });
   }
 
+  void listenToCompletedTours() {
+    final userId = _userService.currentUserId;
+
+    if (userId == null || userId.isEmpty) {
+      completedTours.clear();
+      toursCompleted.value = 0;
+      return;
+    }
+
+    _completedToursSub?.cancel();
+
+    _completedToursSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('upcomingBookings')
+        .where('status', isEqualTo: 'Completed')
+        .snapshots()
+        .listen((snapshot) async {
+      final List<Map<String, dynamic>> loaded = [];
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final tourId = (data['tourId'] ?? doc.id).toString();
+        if (tourId.isEmpty) continue;
+
+        final tourDoc = await FirebaseFirestore.instance
+            .collection('tourPackages')
+            .doc(tourId)
+            .get();
+
+        if (!tourDoc.exists) continue;
+        final tourData = tourDoc.data() as Map<String, dynamic>;
+
+        String guideName = '';
+        final guideId = tourData['guideId'];
+        if (guideId != null && guideId.toString().isNotEmpty) {
+          final guideDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(guideId)
+              .get();
+
+          if (guideDoc.exists) {
+            final guideData = guideDoc.data() as Map<String, dynamic>;
+            guideName = guideData['fullName'] ?? '';
+          }
+        }
+
+        final rating = double.tryParse('${tourData['rating'] ?? 0}') ?? 0.0;
+
+        final completedAt = data['completedAt'] ?? data['updatedAt'];
+        String completionDate = '';
+        if (completedAt is Timestamp) {
+          final dt = completedAt.toDate();
+          completionDate = '${dt.month}/${dt.day}/${dt.year}';
+        }
+
+        loaded.add({
+          'id': tourDoc.id,
+          'title': tourData['tourTitle'] ?? '',
+          'guide': guideName,
+          'rating': rating,
+          'completionDate': completionDate,
+          'image': tourData['image'] ?? '',
+        });
+      }
+
+      completedTours.assignAll(loaded);
+      toursCompleted.value = loaded.length;
+    });
+  }
+
   void changeTab(String tab) {
     selectedTab.value = tab;
   }
@@ -155,6 +212,7 @@ Future<void> removeSavedTour(String tourId) async {
   @override
   void onClose() {
     _savedToursSub?.cancel();
+    _completedToursSub?.cancel();
     super.onClose();
   }
 }

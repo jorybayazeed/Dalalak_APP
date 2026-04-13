@@ -584,6 +584,31 @@ class CreatePackageController extends GetxController {
     activities[index] = updated;
   }
 
+  void removePhotoChallengesFromAllActivities() {
+    if (activities.isEmpty) return;
+
+    final updated = activities
+        .map(
+          (a) => TourActivity(
+            id: a.id,
+            activityName: a.activityName,
+            activityPlace: a.activityPlace,
+            activityType: a.activityType,
+            latitude: a.latitude,
+            longitude: a.longitude,
+            question: a.question,
+            questionType: a.questionType,
+            answerOptions: List<String>.from(a.answerOptions),
+            correctAnswer: a.correctAnswer,
+            photoChallengeEnabled: false,
+            photoChallengeText: '',
+          ),
+        )
+        .toList(growable: false);
+
+    activities.assignAll(updated);
+  }
+
   void setActivityPlaceSearchDraft({
     required String activityId,
     required String value,
@@ -744,6 +769,16 @@ class CreatePackageController extends GetxController {
         final relaxedUri =
             Uri.https('nominatim.openstreetmap.org', '/search', relaxedParams);
         decoded = await fetch(relaxedUri);
+      }
+      if (decoded.isEmpty) {
+        final fallbackParams = <String, String>{
+          'format': 'jsonv2',
+          'limit': '20',
+          'q': q,
+        };
+        final fallbackUri =
+            Uri.https('nominatim.openstreetmap.org', '/search', fallbackParams);
+        decoded = await fetch(fallbackUri);
       }
       if (decoded.isEmpty) {
         if (index < 0 || index >= activities.length) return;

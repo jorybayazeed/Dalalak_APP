@@ -6,6 +6,7 @@ import 'package:tour_app/view/main/tour_guide/packages/views/create_package_view
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tour_guide/profile/views/profile_view.dart';
 import 'package:tour_app/view/main/tour_guide/chat/views/chat_view.dart';
+import 'package:tour_app/view/main/tour_guide/tours/views/guide_tours_view.dart';
 
 class DashboardController extends GetxController {
   final UserService _userService = Get.find<UserService>();
@@ -85,5 +86,9 @@ class DashboardController extends GetxController {
   void chatWithTourists() {
     currentBottomNavIndex.value = 2;
     Get.to(() => const ChatView());
+  }
+
+  void viewMyTours() {
+    Get.to(() => const GuideToursView());
   }
 }

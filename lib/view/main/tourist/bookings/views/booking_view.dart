@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tour_app/services/gamification_service.dart';
+import 'package:tour_app/view/main/tourist/bookings/views/booking_success_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:tour_app/view/main/tourist/bookings/views/booking_success_view.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 
 class BookingView extends StatefulWidget {
@@ -86,11 +87,34 @@ class _BookingViewState extends State<BookingView> {
       }
 
       final userId = user.uid;
-      final tourId = widget.tour['id'];
+      final tourId = (widget.tour['id'] ?? '').toString();
 
-      if (tourId == null || tourId.toString().isEmpty) {
+      if (tourId.isEmpty) {
         Get.snackbar('Error', 'Tour ID not found');
         return;
+      }
+
+      try {
+        final tourDoc = await FirebaseFirestore.instance
+            .collection('tourPackages')
+            .doc(tourId)
+            .get();
+
+        if (tourDoc.exists) {
+          final tourData = tourDoc.data();
+          final live = tourData?['liveTourState'] as Map<String, dynamic>?;
+          final ended = (live?['ended'] as bool?) ?? false;
+          if (ended) {
+            Get.snackbar(
+              'Tour ended',
+              'This tour has already ended and can\'t be booked',
+              snackPosition: SnackPosition.BOTTOM,
+            );
+            return;
+          }
+        }
+      } catch (e) {
+        Get.log('Booking: failed to check tour state: $e');
       }
 
       final userDoc = await FirebaseFirestore.instance
@@ -127,16 +151,74 @@ class _BookingViewState extends State<BookingView> {
         'status': 'Upcoming',
       });
 
+      var bookingPointsEarned = 0;
+      try {
+        bookingPointsEarned = await Get.find<GamificationService>().awardBookingPoints(
+          packageId: tourId,
+        );
+
+        await Get.find<GamificationService>().recomputeAndSyncTotalPoints(
+          userId: userId,
+          force: true,
+        );
+      } catch (_) {
+        // Ignore points errors.
+      }
+
+      final tourTitle = (widget.tour['tourTitle'] ?? '').toString();
+      await Get.dialog<void>(
+        AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Text(
+            'Booking Confirmed',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              fontSize: 16.sp,
+            ),
+          ),
+          content: Text(
+            bookingPointsEarned > 0
+                ? 'You earned booking points (+$bookingPointsEarned)'
+                : 'Your booking has been confirmed',
+            style: GoogleFonts.inter(fontSize: 14.sp),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: Text(
+                'Continue',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF00A86B),
+                ),
+              ),
+            ),
+          ],
+        ),
+        barrierDismissible: false,
+      );
+
       if (Get.isRegistered<TouristHomeController>()) {
-        await Get.find<TouristHomeController>().loadCurrentTours();
+        final home = Get.find<TouristHomeController>();
+        await home.loadCurrentTours(showCompletionSnackbars: false);
+        final activeTourId = home.activeTourId.value;
+        if (activeTourId.isNotEmpty) {
+          await home.loadTourActivities(
+            activeTourId,
+            showCompletionSnackbars: false,
+          );
+        }
       }
 
       Get.off(
         () => BookingSuccessView(
-          tourTitle: widget.tour['tourTitle'] ?? '',
+          tourTitle: tourTitle,
         ),
       );
     } catch (e) {
+      Get.log('Booking confirm error: $e');
       Get.snackbar('Error', 'Failed to confirm booking');
     }
   }

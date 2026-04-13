@@ -8,6 +8,58 @@ class PackagesService extends GetxService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
+  Future<void> submitTourRating({
+    required String packageId,
+    required int rating,
+    required String review,
+  }) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final safeRating = rating.clamp(1, 5);
+      final packageRef = _firestore.collection('tourPackages').doc(packageId);
+      final ratingRef = packageRef.collection('ratings').doc(userId);
+
+      await _firestore.runTransaction((tx) async {
+        final already = await tx.get(ratingRef);
+        if (already.exists) {
+          return;
+        }
+
+        final packageSnap = await tx.get(packageRef);
+        if (!packageSnap.exists) {
+          throw Exception('Tour package not found');
+        }
+
+        final data = packageSnap.data() as Map<String, dynamic>;
+        final currentAvg = (data['rating'] as num?)?.toDouble() ?? 0.0;
+        final currentReviews = (data['reviews'] as num?)?.toInt() ?? 0;
+
+        final newReviews = currentReviews + 1;
+        final newAvg = ((currentAvg * currentReviews) + safeRating) / newReviews;
+
+        tx.set(ratingRef, {
+          'userId': userId,
+          'packageId': packageId,
+          'rating': safeRating,
+          'review': review,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        tx.update(packageRef, {
+          'rating': double.parse(newAvg.toStringAsFixed(2)),
+          'reviews': newReviews,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (e) {
+      throw Exception('Failed to submit rating: ${e.toString()}');
+    }
+  }
+
   Future<String> createPackage({
     required String tourTitle,
     required String destination,
@@ -162,6 +214,40 @@ class PackagesService extends GetxService {
       throw Exception('Failed to get package: ${e.toString()}');
     }
   }
+
+  Future<void> updateLiveTourState({
+    required String packageId,
+    required String activeActivityId,
+    required List<String> completedActivityIds,
+    required bool ended,
+    Timestamp? sessionStartedAt,
+  }) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final liveTourState = <String, dynamic>{
+        'guideId': userId,
+        'activeActivityId': activeActivityId,
+        'completedActivityIds': completedActivityIds,
+        'ended': ended,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (sessionStartedAt != null) {
+        liveTourState['sessionStartedAt'] = sessionStartedAt;
+      }
+
+      await _firestore.collection('tourPackages').doc(packageId).update({
+        'liveTourState': liveTourState,
+      });
+    } catch (e) {
+      throw Exception('Failed to update live tour state: ${e.toString()}');
+    }
+  }
+
   Stream<List<Map<String, dynamic>>> getAllPackagesStream() {
   return _firestore
       .collection('tourPackages')
@@ -209,7 +295,7 @@ class PackagesService extends GetxService {
 
       return packages;
     } catch (e) {
-      print('Error fetching all packages: $e');
+      Get.log('Error fetching all packages: $e');
       return [];
     }
   }

@@ -13,6 +13,7 @@ import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
 import 'package:tour_app/view/onboarding/views/onboarding_view.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 

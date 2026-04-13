@@ -357,7 +357,7 @@ class TouristProfileView extends StatelessWidget {
   }
 
   Widget _buildCompletedTourCard(Map<String, dynamic> tour) {
-    final rating = tour['rating'] as double;
+    final rating = (tour['rating'] as num?)?.toDouble() ?? 0.0;
 
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
@@ -473,9 +473,9 @@ class TouristProfileView extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      tour['completionDate'] as String,
+                      (tour['completionDate'] ?? '').toString(),
                       style: GoogleFonts.inter(
-                        color: const Color(0xFF666666),
+                        color: const Color(0xFF999999),
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w400,
                       ),

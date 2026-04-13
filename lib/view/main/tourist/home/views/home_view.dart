@@ -26,6 +26,7 @@ class TouristHomeView extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            _RatePromptListener(controller: controller),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
               child: Row(
@@ -394,7 +395,17 @@ class TouristHomeView extends StatelessWidget {
                           SizedBox(height: 12.h),
                           Obx(() {
                             if (controller.currentTours.isEmpty) {
-                              return const SizedBox();
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.h),
+                                child: Text(
+                                  'No upcoming tours yet',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF6B6B6B),
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
                             }
                             return Column(
                               children: controller.currentTours.map((tour) {
@@ -1097,6 +1108,92 @@ class TouristHomeView extends StatelessWidget {
                                                   ),
                                                 ),
                                                 SizedBox(height: 16.h),
+                                                Obx(() {
+                                                  final ended =
+                                                      controller.tourEndedByTourId[tourId] ?? false;
+                                                  if (!ended) return const SizedBox.shrink();
+                                                  return Container(
+                                                    width: double.infinity,
+                                                    padding: EdgeInsets.symmetric(
+                                                      vertical: 12.h,
+                                                      horizontal: 14.w,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFFFE0E0),
+                                                      borderRadius:
+                                                          BorderRadius.circular(14.r),
+                                                      border: Border.all(
+                                                        color: const Color(0xFFD32F2F),
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.stop_circle,
+                                                          color: const Color(0xFFD32F2F),
+                                                          size: 18.sp,
+                                                        ),
+                                                        SizedBox(width: 10.w),
+                                                        Expanded(
+                                                          child: Text(
+                                                            'This tour has ended by the guide',
+                                                            style: GoogleFonts.inter(
+                                                              color: const Color(0xFFD32F2F),
+                                                              fontSize: 12.sp,
+                                                              fontWeight: FontWeight.w700,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                }),
+                                                Obx(() {
+                                                  final ended =
+                                                      controller.tourEndedByTourId[tourId] ?? false;
+                                                  final rated =
+                                                      controller.ratedByTourId[tourId] ?? false;
+                                                  if (!ended || rated) {
+                                                    return const SizedBox.shrink();
+                                                  }
+
+                                                  return Column(
+                                                    children: [
+                                                      SizedBox(height: 12.h),
+                                                      SizedBox(
+                                                        width: double.infinity,
+                                                        height: 46.h,
+                                                        child: ElevatedButton(
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor:
+                                                                const Color(0xFF00A86B),
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(14.r),
+                                                            ),
+                                                          ),
+                                                          onPressed: () async {
+                                                            await Get.dialog<void>(
+                                                              _RateTourDialog(
+                                                                tourId: tourId,
+                                                              ),
+                                                              barrierDismissible: true,
+                                                            );
+                                                          },
+                                                          child: Text(
+                                                            'Rate Tour',
+                                                            style: GoogleFonts.inter(
+                                                              color: Colors.white,
+                                                              fontSize: 14.sp,
+                                                              fontWeight: FontWeight.w800,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }),
+                                                SizedBox(height: 8.h),
                                               ],
                                             ),
                                           ),
@@ -1321,6 +1418,72 @@ class TouristHomeView extends StatelessWidget {
   }
 }
 
+class _QuizWrongDialog extends StatelessWidget {
+  const _QuizWrongDialog({required this.pointsEarned});
+
+  final int pointsEarned;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+      insetPadding: EdgeInsets.symmetric(horizontal: 40.w),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Incorrect answer',
+                        style: GoogleFonts.inter(
+                          fontSize: 22.sp,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFD32F2F),
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        'Better luck next time! You still earned +$pointsEarned points for participating—keep trying!',
+                        style: GoogleFonts.inter(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF555555),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'إغلاق',
+                  style: GoogleFonts.inter(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1976D2),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PhotoChallengeDialog extends StatefulWidget {
   const _PhotoChallengeDialog({
     required this.packageId,
@@ -1396,7 +1559,10 @@ class _PhotoChallengeDialogState extends State<_PhotoChallengeDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 360.w),
+        constraints: BoxConstraints(
+          maxWidth: 360.w,
+          maxHeight: MediaQuery.of(context).size.height * 0.78,
+        ),
         child: Padding(
           padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 16.h),
           child: Column(
@@ -1668,13 +1834,27 @@ class _QuizSuccessDialog extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '🎉 Great! You earned $pointsEarned points!',
-                    style: GoogleFonts.inter(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Nice! That\'s correct.',
+                        style: GoogleFonts.inter(
+                          fontSize: 22.sp,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF2E7D32),
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        '+$pointsEarned points | Ready for the next challenge?',
+                        style: GoogleFonts.inter(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF555555),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1954,43 +2134,50 @@ class _QuizDialogState extends State<_QuizDialog> {
                 ),
               ),
               SizedBox(height: 16.h),
-              ...List.generate(widget.options.length, (i) {
-                final isSelected = _selectedIndex == i;
-                return InkWell(
-                  onTap: _isSubmitting
-                      ? null
-                      : () => setState(() => _selectedIndex = i),
-                  borderRadius: BorderRadius.circular(12.r),
-                  child: Container(
-                    width: double.infinity,
-                    height: 48.h,
-                    margin: EdgeInsets.only(bottom: 12.h),
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF00A86B)
-                            : const Color(0xFFE6E6E6),
-                        width: 1.5,
-                      ),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      widget.options[i],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: List.generate(widget.options.length, (i) {
+                      final isSelected = _selectedIndex == i;
+                      return InkWell(
+                        onTap: _isSubmitting
+                            ? null
+                            : () => setState(() => _selectedIndex = i),
+                        borderRadius: BorderRadius.circular(12.r),
+                        child: Container(
+                          width: double.infinity,
+                          constraints: BoxConstraints(minHeight: 48.h),
+                          margin: EdgeInsets.only(bottom: 12.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 12.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF00A86B)
+                                  : const Color(0xFFE6E6E6),
+                              width: 1.5,
+                            ),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            widget.options[i],
+                            softWrap: true,
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ),
-                );
-              }),
+                ),
+              ),
               SizedBox(height: 8.h),
               Row(
                 children: [
@@ -2045,40 +2232,32 @@ class _QuizDialogState extends State<_QuizDialog> {
                                     Navigator.of(context).pop();
                                   } else {
                                     final earned = result.pointsEarned;
+                                    final isCorrect = result.isCorrect;
                                     Navigator.of(context).pop();
 
                                     if (homeController != null) {
-                                      await homeController.loadCurrentTours();
+                                      await homeController.loadCurrentTours(
+                                        showCompletionSnackbars: false,
+                                      );
                                       final activeTourId =
                                           homeController.activeTourId.value;
                                       if (activeTourId.isNotEmpty) {
                                         await homeController
-                                            .loadTourActivities(activeTourId);
+                                            .loadTourActivities(
+                                          activeTourId,
+                                          showCompletionSnackbars: false,
+                                        );
                                       }
                                     }
 
-                                    if (earned > 0) {
+                                    if (isCorrect) {
                                       await Get.dialog<void>(
                                         _QuizSuccessDialog(pointsEarned: earned),
                                         barrierDismissible: true,
                                       );
                                     } else {
-                                      Get.snackbar(
-                                        'Result',
-                                        'Points earned: $earned',
-                                        snackPosition: SnackPosition.BOTTOM,
-                                      );
-                                    }
-
-                                    if (widget.photoChallengeEnabled) {
                                       await Get.dialog<void>(
-                                        _PhotoChallengeDialog(
-                                          packageId: widget.packageId,
-                                          activityId: widget.activityId,
-                                          title: widget.title,
-                                          challengeText:
-                                              widget.photoChallengeText,
-                                        ),
+                                        _QuizWrongDialog(pointsEarned: earned),
                                         barrierDismissible: true,
                                       );
                                     }
@@ -2129,6 +2308,194 @@ class _QuizDialogState extends State<_QuizDialog> {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RatePromptListener extends StatelessWidget {
+  const _RatePromptListener({required this.controller});
+
+  final TouristHomeController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final tourId = controller.ratePromptTourId.value;
+      if (tourId == null || tourId.trim().isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final pending = controller.ratePromptTourId.value;
+        if (pending == null || pending != tourId) return;
+        controller.ratePromptTourId.value = null;
+
+        await Future<void>.delayed(const Duration(seconds: 2));
+
+        await Get.dialog<void>(
+          _RateTourDialog(tourId: tourId),
+          barrierDismissible: true,
+        );
+      });
+
+      return const SizedBox.shrink();
+    });
+  }
+}
+
+class _RateTourDialog extends StatefulWidget {
+  const _RateTourDialog({required this.tourId});
+
+  final String tourId;
+
+  @override
+  State<_RateTourDialog> createState() => _RateTourDialogState();
+}
+
+class _RateTourDialogState extends State<_RateTourDialog> {
+  int _rating = 5;
+  bool _isSubmitting = false;
+  final TextEditingController _reviewController = TextEditingController();
+
+  @override
+  void dispose() {
+    _reviewController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canSubmit = !_isSubmitting;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+      insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 380.w),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 16.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Rate this tour',
+                      style: GoogleFonts.inter(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: _isSubmitting
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: Icon(
+                      Icons.close,
+                      size: 18.sp,
+                      color: const Color(0xFF7A7A7A),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 14.h),
+              Row(
+                children: List.generate(5, (i) {
+                  final selected = i < _rating;
+                  return InkWell(
+                    onTap: _isSubmitting
+                        ? null
+                        : () => setState(() => _rating = i + 1),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 2.w),
+                      child: Icon(
+                        selected ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 26.sp,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              SizedBox(height: 14.h),
+              TextField(
+                controller: _reviewController,
+                enabled: !_isSubmitting,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Write a short review (optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(color: Color(0xFF00A86B)),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              SizedBox(
+                width: double.infinity,
+                height: 46.h,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00A86B),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                  ),
+                  onPressed: canSubmit
+                      ? () async {
+                          setState(() => _isSubmitting = true);
+                          try {
+                            final controller = Get.find<TouristHomeController>();
+                            await controller.submitTourRating(
+                              tourId: widget.tourId,
+                              rating: _rating,
+                              review: _reviewController.text.trim(),
+                            );
+
+                            if (!mounted) return;
+                            Navigator.of(context).pop();
+                            Get.snackbar(
+                              'Thanks!',
+                              'Rating submitted (+5 points)',
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            setState(() => _isSubmitting = false);
+                            Get.snackbar(
+                              'Error',
+                              e.toString(),
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                          }
+                        }
+                      : null,
+                  child: Text(
+                    _isSubmitting ? 'Submitting...' : 'Submit',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

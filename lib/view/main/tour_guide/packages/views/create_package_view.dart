@@ -239,21 +239,31 @@ else {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Text(
+            'Tour Activities & Gamification',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Wrap(
+            spacing: 16.w,
+            runSpacing: 8.h,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  'Tour Activities & Gamification',
-                  style: GoogleFonts.inter(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
               GestureDetector(
                 onTap: controller.addActivity,
-                child: Text("Add Activity"),
+                child: Text(
+                  'Add Activity',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF00A86B),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -971,69 +981,6 @@ Obx(() {
     ],
   );
 }),
-
-          SizedBox(height: 16.h),
-
-          Obx(() {
-            if (index >= controller.activities.length) {
-              return const SizedBox.shrink();
-            }
-            final currentActivity = controller.activities[index];
-            final enabled = currentActivity.photoChallengeEnabled;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Photo Challenge',
-                  style: GoogleFonts.inter(
-                    color: Colors.black,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 8.h),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Enable photo challenge for this activity',
-                          style: GoogleFonts.inter(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      Switch(
-                        value: enabled,
-                        activeColor: const Color(0xFF00A86B),
-                        onChanged: (v) => controller
-                            .updateActivityPhotoChallengeEnabled(index, v),
-                      ),
-                    ],
-                  ),
-                ),
-                if (enabled) ...[
-                  SizedBox(height: 12.h),
-                  _buildInitialValueTextField(
-                    label: 'Challenge Text',
-                    hintText: 'e.g., Take a selfie at the Corniche',
-                    initialValue: currentActivity.photoChallengeText,
-                    maxLines: 2,
-                    onChanged: (value) => controller
-                        .updateActivityPhotoChallengeText(index, value),
-                  ),
-                ],
-              ],
-            );
-          }),
 
           ],
         ),

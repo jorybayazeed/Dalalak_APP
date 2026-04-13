@@ -60,6 +60,8 @@ class AuthService extends GetxService {
         'phone': phone,
         'userType': userType,
         'isProfileVerified': true,
+        'totalPoints': 0,
+        'level': 1,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
@@ -126,6 +128,16 @@ class AuthService extends GetxService {
       final userType = userData['userType'] as String? ?? 'Tourist';
       final isProfileVerified = userData['isProfileVerified'] as bool? ?? true;
 
+      if (!userData.containsKey('totalPoints') || !userData.containsKey('level')) {
+        await _firestore.collection('users').doc(user.uid).set(
+          {
+            if (!userData.containsKey('totalPoints')) 'totalPoints': 0,
+            if (!userData.containsKey('level')) 'level': 1,
+          },
+          SetOptions(merge: true),
+        );
+      }
+
       if (userType == 'Tour Guide' && !isProfileVerified) {
         await _auth.signOut();
         return {
@@ -190,6 +202,8 @@ class AuthService extends GetxService {
         'fullName': fullName,
         'userType': userType,
         'isProfileVerified': true,
+        'totalPoints': 0,
+        'level': 1,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
@@ -236,6 +250,16 @@ class AuthService extends GetxService {
       final userData = userDoc.data()!;
       final userType = userData['userType'] as String? ?? 'Tourist';
       final isProfileVerified = userData['isProfileVerified'] as bool? ?? true;
+
+      if (!userData.containsKey('totalPoints') || !userData.containsKey('level')) {
+        await _firestore.collection('users').doc(user.uid).set(
+          {
+            if (!userData.containsKey('totalPoints')) 'totalPoints': 0,
+            if (!userData.containsKey('level')) 'level': 1,
+          },
+          SetOptions(merge: true),
+        );
+      }
 
       if (userType == 'Tour Guide' && !isProfileVerified) {
         await _auth.signOut();
