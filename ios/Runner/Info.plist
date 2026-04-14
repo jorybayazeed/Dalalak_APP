@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to complete activity challenges.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access to select a photo for activity challenges.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need permission to save challenge photos.</string>
 </dict>
 </plist>

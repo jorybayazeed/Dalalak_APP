@@ -376,6 +376,17 @@ class DashboardView extends StatelessWidget {
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),
                       child: _buildActionCard(
+                        icon: Icons.tour,
+                        iconColor: const Color(0xFF1565C0),
+                        title: 'My Tours',
+                        subtitle: 'Start and manage live tours',
+                        onTap: controller.viewMyTours,
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18.w),
+                      child: _buildActionCard(
                         icon: Icons.chat,
                         iconColor: Colors.purple,
                         title: 'Chat with Tourists',

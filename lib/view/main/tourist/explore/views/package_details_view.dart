@@ -282,6 +282,104 @@ SizedBox(height: 20.h),
                         }).toList(),
                       ],
 
+                      SizedBox(height: 20.h),
+
+                      Text(
+                        'Reviews',
+                        style: GoogleFonts.inter(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      SizedBox(height: 12.h),
+
+                      if (controller.isRatingsLoading.value)
+                        const Center(child: CircularProgressIndicator())
+                      else if (controller.ratings.isEmpty)
+                        Text(
+                          'No reviews yet',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            color: Colors.grey,
+                          ),
+                        )
+                      else
+                        ...controller.ratings.map((r) {
+                          final userName = (r['userName'] ?? 'Tourist').toString();
+                          final userImage = (r['userImage'] ?? '').toString();
+                          final rating = (r['rating'] as int?) ?? 0;
+                          final review = (r['review'] ?? '').toString();
+
+                          return Container(
+                            width: double.infinity,
+                            margin: EdgeInsets.only(bottom: 12.h),
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18.r,
+                                      backgroundColor: Colors.grey.shade300,
+                                      backgroundImage: userImage.isNotEmpty
+                                          ? NetworkImage(userImage)
+                                          : null,
+                                      child: userImage.isEmpty
+                                          ? Icon(
+                                              Icons.person,
+                                              size: 18.sp,
+                                              color: Colors.white,
+                                            )
+                                          : null,
+                                    ),
+                                    SizedBox(width: 10.w),
+                                    Expanded(
+                                      child: Text(
+                                        userName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: List.generate(5, (i) {
+                                        final filled = i < rating;
+                                        return Icon(
+                                          filled ? Icons.star : Icons.star_border,
+                                          size: 16.sp,
+                                          color: const Color(0xFFFFC107),
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                                if (review.trim().isNotEmpty) ...[
+                                  SizedBox(height: 10.h),
+                                  Text(
+                                    review,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13.sp,
+                                      color: Colors.black87,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        }).toList(),
+
                       SizedBox(height: 24.h),
 
                      if (showBookingButton)

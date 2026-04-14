@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 class TourActivity {
   String id;
   String activityName;
+  String activityPlace;
   String activityType;
-  String xPosition;
-  String yPosition;
+  double? latitude;
+  double? longitude;
   String question;
   String questionType;
   List<String> answerOptions;
   String correctAnswer;
+  bool photoChallengeEnabled;
+  String photoChallengeText;
   
 
   
@@ -21,35 +29,44 @@ class TourActivity {
   TourActivity({
     required this.id,
     this.activityName = '',
+    this.activityPlace = '',
     this.activityType = '',
-    this.xPosition = '50',
-    this.yPosition = '50',
+    this.latitude,
+    this.longitude,
     this.question = '',
     this.questionType = 'Multiple Choice',
     this.answerOptions = const ['', '', '', ''],
     this.correctAnswer = '',
-    
+    this.photoChallengeEnabled = false,
+    this.photoChallengeText = '',
   });
 
   Map<String, dynamic> toMap() {
     return {
+      'activityId': id,
       'activityName': activityName,
-      'xPosition': xPosition,
-      'yPosition': yPosition,
+      'activityPlace': activityPlace,
+      'activityType': activityType,
+      'latitude': latitude,
+      'longitude': longitude,
       'question': question,
       'questionType': questionType,
       'answerOptions': answerOptions,
       'correctAnswer': correctAnswer,
-      
+      'photoChallengeEnabled': photoChallengeEnabled,
+      'photoChallengeText': photoChallengeText,
     };
   }
 
   factory TourActivity.fromMap(String id, Map<String, dynamic> map) {
+    final activityId = map['activityId'] as String?;
     return TourActivity(
-      id: id,
+      id: (activityId != null && activityId.isNotEmpty) ? activityId : id,
       activityName: map['activityName'] as String? ?? '',
-      xPosition: map['xPosition'] as String? ?? '50',
-      yPosition: map['yPosition'] as String? ?? '50',
+      activityPlace: map['activityPlace'] as String? ?? '',
+      activityType: map['activityType'] as String? ?? '',
+      latitude: (map['latitude'] as num?)?.toDouble(),
+      longitude: (map['longitude'] as num?)?.toDouble(),
       question: map['question'] as String? ?? '',
       questionType: map['questionType'] as String? ?? 'Multiple Choice',
       answerOptions:
@@ -58,7 +75,9 @@ class TourActivity {
               .toList() ??
           ['', '', '', ''],
       correctAnswer: map['correctAnswer'] ?? '',
-      
+      photoChallengeEnabled:
+          (map['photoChallengeEnabled'] as bool?) ?? false,
+      photoChallengeText: map['photoChallengeText'] as String? ?? '',
     );
   }
 }
@@ -81,6 +100,120 @@ class CreatePackageController extends GetxController {
   final List<TextEditingController> correctAnswerControllers = [];
   final RxBool isLoading = false.obs;
   final String? packageId;
+
+  final RxMap<String, LatLng> activityDraftCenters = <String, LatLng>{}.obs;
+  final RxMap<String, String> activityPlaceSearchDraft = <String, String>{}.obs;
+  final Map<String, TextEditingController> _activityPlaceSearchControllers =
+      <String, TextEditingController>{};
+
+  final Map<String, Timer> _activityGeocodeDebounce = <String, Timer>{};
+  final Map<String, String> _lastGeocodeQuery = <String, String>{};
+  final Map<String, String> _lastGeocodeDialogQuery = <String, String>{};
+  final Map<String, DateTime> _lastGeocodeDialogShownAt = <String, DateTime>{};
+
+  double _degToRad(double d) => d * (3.141592653589793 / 180.0);
+
+  String _simplifyGeocodeQuery(
+    String raw, {
+    int maxTokens = 7,
+  }) {
+    final postcodeMatch = RegExp(r'\b\d{5}\b').firstMatch(raw);
+    final postcode = postcodeMatch?.group(0);
+
+    final cleaned = raw
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (cleaned.isEmpty) return '';
+
+    const stop = <String>{
+      'the',
+      'a',
+      'an',
+      'and',
+      'or',
+      'of',
+      'to',
+      'in',
+      'at',
+      'on',
+      'for',
+      'with',
+      'from',
+      'near',
+      'around',
+      'by',
+    };
+
+    final tokens = cleaned
+        .split(' ')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty && !stop.contains(t))
+        .toList();
+
+    if (tokens.isEmpty) return cleaned;
+
+    final simplified = tokens.take(maxTokens).join(' ');
+    if (postcode == null || postcode.isEmpty) return simplified;
+    if (simplified.contains(postcode)) return simplified;
+    return '$simplified $postcode';
+  }
+
+  double _distanceKm(LatLng a, LatLng b) {
+    const r = 6371.0;
+    final dLat = _degToRad(b.latitude - a.latitude);
+    final dLon = _degToRad(b.longitude - a.longitude);
+    final lat1 = _degToRad(a.latitude);
+    final lat2 = _degToRad(b.latitude);
+
+    final h =
+        (sin(dLat / 2) * sin(dLat / 2)) +
+            (sin(dLon / 2) * sin(dLon / 2) * cos(lat1) * cos(lat2));
+    final c = 2 * atan2(sqrt(h), sqrt(1 - h));
+    return r * c;
+  }
+
+  final RxSet<String> expandedActivityMapIds = <String>{}.obs;
+  final LatLng defaultMapCenter = const LatLng(24.7136, 46.6753);
+
+  static const Map<String, LatLng> _destinationCenters = {
+    'Riyadh': LatLng(24.7136, 46.6753),
+    'Jeddah': LatLng(21.4858, 39.1925),
+    'AlUla': LatLng(26.6082, 37.9232),
+    'Dammam': LatLng(26.4207, 50.0888),
+    'Abha': LatLng(18.2164, 42.5053),
+    'Taif': LatLng(21.2703, 40.4158),
+    'Makkah': LatLng(21.3891, 39.8579),
+    'Madinah': LatLng(24.5247, 39.5692),
+  };
+
+  LatLng _centerForArea(String area) {
+    final trimmed = area.trim();
+    if (trimmed.isEmpty) return defaultMapCenter;
+    return _destinationCenters[trimmed] ?? defaultMapCenter;
+  }
+
+  LatLng getPreferredMapCenter({LatLng? selectedPoint}) {
+    if (selectedPoint != null) return selectedPoint;
+    if (selectedRegion.value.trim().isNotEmpty) {
+      return _centerForArea(selectedRegion.value);
+    }
+    if (selectedDestination.value.trim().isNotEmpty) {
+      return _centerForArea(selectedDestination.value);
+    }
+    return defaultMapCenter;
+  }
+
+  double getPreferredMapZoom({LatLng? selectedPoint}) {
+    if (selectedPoint != null) return 13;
+    if (selectedRegion.value.trim().isNotEmpty ||
+        selectedDestination.value.trim().isNotEmpty) {
+      return 10;
+    }
+    return 5;
+  }
   final TextEditingController tourTitleController = TextEditingController();
   final TextEditingController tourDescriptionController = TextEditingController();
   final TextEditingController durationValueController = TextEditingController(text: '3');
@@ -287,56 +420,559 @@ class CreatePackageController extends GetxController {
   }
 
   void addActivity() {
-    activities.add(TourActivity(id: 'activity_${activities.length}'));
+    final activityId = DateTime.now().microsecondsSinceEpoch.toString();
+    final preferred = getPreferredMapCenter();
+    activities.add(
+      TourActivity(
+        id: activityId,
+        latitude: preferred.latitude,
+        longitude: preferred.longitude,
+      ),
+    );
     correctAnswerControllers.add(TextEditingController());
+  }
+
+  void toggleActivityMap(String activityId) {
+    if (expandedActivityMapIds.contains(activityId)) {
+      expandedActivityMapIds.remove(activityId);
+    } else {
+      expandedActivityMapIds.add(activityId);
+
+      final index = activities.indexWhere((a) => a.id == activityId);
+      if (index != -1) {
+        final a = activities[index];
+        if (a.latitude == null || a.longitude == null) {
+          updateActivityLocation(index, getPreferredMapCenter());
+        }
+      }
+    }
+  }
+
+  void updateActivityLocation(int index, LatLng position) {
+    if (index < 0 || index >= activities.length) return;
+    final current = activities[index];
+    final updated = TourActivity(
+      id: current.id,
+      activityName: current.activityName,
+      activityPlace: current.activityPlace,
+      activityType: current.activityType,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      question: current.question,
+      questionType: current.questionType,
+      answerOptions: List<String>.from(current.answerOptions),
+      correctAnswer: current.correctAnswer,
+      photoChallengeEnabled: current.photoChallengeEnabled,
+      photoChallengeText: current.photoChallengeText,
+    );
+    activities[index] = updated;
+  }
+
+  void updateActivityDraftCenter({
+    required String activityId,
+    required LatLng center,
+  }) {
+    activityDraftCenters[activityId] = center;
+  }
+
+  void setActivityMarkerToDraftCenter(int index) {
+    if (index < 0 || index >= activities.length) return;
+    final activityId = activities[index].id;
+    final center = activityDraftCenters[activityId];
+    if (center == null) return;
+    updateActivityLocation(index, center);
   }
 
   void removeActivity(int index) {
     if (index >= 0 && index < activities.length) {
       activities.removeAt(index);
       correctAnswerControllers.removeAt(index);
-      // Reassign IDs
-      for (int i = 0; i < activities.length; i++) {
-        activities[i].id = 'activity_$i';
-      }
     }
   }
 
   void updateActivityName(int index, String value) {
     if (index >= 0 && index < activities.length) {
-      activities[index].activityName = value;
+      final current = activities[index];
+      final updated = TourActivity(
+        id: current.id,
+        activityName: value,
+        activityPlace: current.activityPlace,
+        activityType: current.activityType,
+        latitude: current.latitude,
+        longitude: current.longitude,
+        question: current.question,
+        questionType: current.questionType,
+        answerOptions: List<String>.from(current.answerOptions),
+        correctAnswer: current.correctAnswer,
+        photoChallengeEnabled: current.photoChallengeEnabled,
+        photoChallengeText: current.photoChallengeText,
+      );
+      activities[index] = updated;
     }
   }
+
+  void updateActivityPlace(int index, String value) {
+    if (index < 0 || index >= activities.length) return;
+    final current = activities[index];
+    final updated = TourActivity(
+      id: current.id,
+      activityName: current.activityName,
+      activityPlace: value,
+      activityType: current.activityType,
+      latitude: current.latitude,
+      longitude: current.longitude,
+      question: current.question,
+      questionType: current.questionType,
+      answerOptions: List<String>.from(current.answerOptions),
+      correctAnswer: current.correctAnswer,
+      photoChallengeEnabled: current.photoChallengeEnabled,
+      photoChallengeText: current.photoChallengeText,
+    );
+    activities[index] = updated;
+
+    activityPlaceSearchDraft[current.id] = value;
+
+    final c = _activityPlaceSearchControllers[current.id];
+    if (c != null && c.text != value) {
+      c.value = c.value.copyWith(
+        text: value,
+        selection: TextSelection.collapsed(offset: value.length),
+        composing: TextRange.empty,
+      );
+    }
+
+    _debouncedGeocodeActivityName(index: index);
+  }
+
+  void updateActivityPhotoChallengeEnabled(int index, bool enabled) {
+    if (index < 0 || index >= activities.length) return;
+    final current = activities[index];
+    final updated = TourActivity(
+      id: current.id,
+      activityName: current.activityName,
+      activityPlace: current.activityPlace,
+      activityType: current.activityType,
+      latitude: current.latitude,
+      longitude: current.longitude,
+      question: current.question,
+      questionType: current.questionType,
+      answerOptions: List<String>.from(current.answerOptions),
+      correctAnswer: current.correctAnswer,
+      photoChallengeEnabled: enabled,
+      photoChallengeText: enabled ? current.photoChallengeText : '',
+    );
+    activities[index] = updated;
+  }
+
+  void updateActivityPhotoChallengeText(int index, String text) {
+    if (index < 0 || index >= activities.length) return;
+    final current = activities[index];
+    final updated = TourActivity(
+      id: current.id,
+      activityName: current.activityName,
+      activityPlace: current.activityPlace,
+      activityType: current.activityType,
+      latitude: current.latitude,
+      longitude: current.longitude,
+      question: current.question,
+      questionType: current.questionType,
+      answerOptions: List<String>.from(current.answerOptions),
+      correctAnswer: current.correctAnswer,
+      photoChallengeEnabled: current.photoChallengeEnabled,
+      photoChallengeText: text,
+    );
+    activities[index] = updated;
+  }
+
+  void removePhotoChallengesFromAllActivities() {
+    if (activities.isEmpty) return;
+
+    final updated = activities
+        .map(
+          (a) => TourActivity(
+            id: a.id,
+            activityName: a.activityName,
+            activityPlace: a.activityPlace,
+            activityType: a.activityType,
+            latitude: a.latitude,
+            longitude: a.longitude,
+            question: a.question,
+            questionType: a.questionType,
+            answerOptions: List<String>.from(a.answerOptions),
+            correctAnswer: a.correctAnswer,
+            photoChallengeEnabled: false,
+            photoChallengeText: '',
+          ),
+        )
+        .toList(growable: false);
+
+    activities.assignAll(updated);
+  }
+
+  void setActivityPlaceSearchDraft({
+    required String activityId,
+    required String value,
+  }) {
+    activityPlaceSearchDraft[activityId] = value;
+  }
+
+  TextEditingController activityPlaceSearchControllerFor(
+    String activityId, {
+    required String fallbackText,
+  }) {
+    final existing = _activityPlaceSearchControllers[activityId];
+    if (existing != null) return existing;
+
+    final initialText =
+        activityPlaceSearchDraft[activityId] ?? fallbackText;
+    final controller = TextEditingController(text: initialText);
+    _activityPlaceSearchControllers[activityId] = controller;
+    return controller;
+  }
+
+  Future<void> submitActivityPlaceSearch(int index) async {
+    if (index < 0 || index >= activities.length) return;
+    final activity = activities[index];
+    final draft = (activityPlaceSearchDraft[activity.id] ?? '').trim();
+    if (draft.isEmpty) {
+      Get.snackbar('Missing place', 'Please enter a place');
+      return;
+    }
+
+    updateActivityPlace(index, draft);
+    await geocodeActivityPlaceNow(index);
+  }
+
+  Future<void> geocodeActivityPlaceNow(int index) async {
+    if (index < 0 || index >= activities.length) return;
+
+    final activityId = activities[index].id;
+    _activityGeocodeDebounce[activityId]?.cancel();
+
+    final place = activities[index].activityPlace.trim();
+    if (place.length < 3) {
+      Get.snackbar('Missing place', 'Please enter Activity Place');
+      return;
+    }
+
+    _lastGeocodeQuery[activityId] = place;
+    await _geocodeAndSetActivityLocation(index: index, query: place);
+  }
+
+  void _debouncedGeocodeActivityName({
+    required int index,
+  }) {
+    if (index < 0 || index >= activities.length) return;
+    final activityId = activities[index].id;
+
+    _activityGeocodeDebounce[activityId]?.cancel();
+
+    final place = activities[index].activityPlace.trim();
+    if (place.length < 3) return;
+
+    if (_lastGeocodeQuery[activityId] == place) return;
+    _lastGeocodeQuery[activityId] = place;
+
+    _activityGeocodeDebounce[activityId] = Timer(const Duration(milliseconds: 1200), () {
+      _geocodeAndSetActivityLocation(index: index, query: place);
+    });
+  }
+
+  Future<void> _geocodeAndSetActivityLocation({
+    required int index,
+    required String query,
+  }) async {
+    if (index < 0 || index >= activities.length) return;
+
+    final activityId = activities[index].id;
+    final placeAtRequestTime = activities[index].activityPlace.trim();
+
+    try {
+      if (placeAtRequestTime.isEmpty || placeAtRequestTime != query) {
+        return;
+      }
+
+      final destination = selectedDestination.value.trim();
+      final region = selectedRegion.value.trim();
+
+      final qLower = query.toLowerCase();
+      final regionLower = region.toLowerCase();
+      final destinationLower = destination.toLowerCase();
+      final shouldAddRegion = region.isNotEmpty && !qLower.contains(regionLower);
+      final shouldAddDestination =
+          destination.isNotEmpty && !qLower.contains(destinationLower);
+
+      final simplified = _simplifyGeocodeQuery(query);
+      final postcode = RegExp(r'\b\d{5}\b')
+          .firstMatch(query)
+          ?.group(0)
+          ?.trim();
+      final q = [
+        if (simplified.isNotEmpty) simplified else query,
+        if (shouldAddRegion) region,
+        if (shouldAddDestination) destination,
+      ].where((e) => e.trim().isNotEmpty).join(' ');
+
+      LatLng? biasCenter;
+      if (region.isNotEmpty) {
+        biasCenter = _destinationCenters[region];
+      }
+      biasCenter ??= _destinationCenters[destination];
+
+      final params = <String, String>{
+        'format': 'jsonv2',
+        'limit': '10',
+        'q': q,
+        'countrycodes': 'sa',
+        'addressdetails': '1',
+        'extratags': '1',
+      };
+
+      if (biasCenter != null) {
+        const delta = 0.7;
+        final left = (biasCenter.longitude - delta).toStringAsFixed(6);
+        final right = (biasCenter.longitude + delta).toStringAsFixed(6);
+        final top = (biasCenter.latitude + delta).toStringAsFixed(6);
+        final bottom = (biasCenter.latitude - delta).toStringAsFixed(6);
+        params['viewbox'] = '$left,$top,$right,$bottom';
+        params['bounded'] = '1';
+      }
+
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', params);
+
+      Future<List<dynamic>> fetch(Uri u) async {
+        final client = HttpClient();
+        try {
+          final request = await client.getUrl(u);
+          request.headers.set('User-Agent', 'DalalakApp/1.0 (contact: support@dalalak.app)');
+          request.headers.set('Accept', 'application/json');
+          request.headers.set('Accept-Language', 'en');
+          final res = await request.close();
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return const <dynamic>[];
+          }
+          final body = await res.transform(utf8.decoder).join();
+          final decoded = jsonDecode(body);
+          return decoded is List ? decoded : const <dynamic>[];
+        } catch (_) {
+          return const <dynamic>[];
+        } finally {
+          client.close(force: true);
+        }
+      }
+
+      var decoded = await fetch(uri);
+      if (decoded.isEmpty) {
+        final relaxedParams = Map<String, String>.from(params);
+        relaxedParams.remove('viewbox');
+        relaxedParams.remove('bounded');
+        final relaxedUri =
+            Uri.https('nominatim.openstreetmap.org', '/search', relaxedParams);
+        decoded = await fetch(relaxedUri);
+      }
+      if (decoded.isEmpty) {
+        final fallbackParams = <String, String>{
+          'format': 'jsonv2',
+          'limit': '20',
+          'q': q,
+        };
+        final fallbackUri =
+            Uri.https('nominatim.openstreetmap.org', '/search', fallbackParams);
+        decoded = await fetch(fallbackUri);
+      }
+      if (decoded.isEmpty) {
+        if (index < 0 || index >= activities.length) return;
+        if (activities[index].id != activityId) return;
+        if (activities[index].activityPlace.trim() != placeAtRequestTime) return;
+
+        if (query.trim().length >= 3) {
+          Get.snackbar('Not found', 'No results for "$query"');
+        }
+        return;
+      }
+
+      final List<Map<String, dynamic>> scored = <Map<String, dynamic>>[];
+
+      final queryTokens = (simplified.isNotEmpty ? simplified : query)
+          .toLowerCase()
+          .split(RegExp(r'\s+'))
+          .map((t) => t.trim())
+          .where((t) => t.isNotEmpty)
+          .toList(growable: false);
+
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        final m = item.cast<String, dynamic>();
+
+        final lat = double.tryParse((m['lat'] ?? '').toString());
+        final lon = double.tryParse((m['lon'] ?? '').toString());
+        if (lat == null || lon == null) continue;
+
+        final importance = (m['importance'] as num?)?.toDouble() ?? 0.0;
+        double score = importance * 1000;
+
+        if (biasCenter != null) {
+          final dist = _distanceKm(biasCenter, LatLng(lat, lon));
+          score -= dist;
+        }
+
+        final displayName = (m['display_name'] ?? '').toString().toLowerCase();
+
+        int tokenMatches = 0;
+        for (final t in queryTokens) {
+          if (displayName.contains(t)) tokenMatches++;
+        }
+        score += tokenMatches * 120;
+
+        if (postcode != null && postcode.isNotEmpty) {
+          final address = m['address'];
+          if (address is Map) {
+            final candidatePostcode = (address['postcode'] ?? '').toString();
+            if (candidatePostcode == postcode) {
+              score += 500;
+            } else if (candidatePostcode.replaceAll(' ', '') ==
+                postcode.replaceAll(' ', '')) {
+              score += 350;
+            }
+          }
+        }
+
+        if (destination.isNotEmpty && displayName.contains(destination.toLowerCase())) {
+          score += 50;
+        }
+        if (region.isNotEmpty && displayName.contains(region.toLowerCase())) {
+          score += 50;
+        }
+
+        final candidate = <String, dynamic>{
+          ...m,
+          '_score': score,
+          '_lat': lat,
+          '_lon': lon,
+        };
+        scored.add(candidate);
+      }
+
+      if (scored.isEmpty) return;
+      scored.sort((a, b) =>
+          ((b['_score'] as num?)?.toDouble() ?? 0)
+              .compareTo(((a['_score'] as num?)?.toDouble() ?? 0)));
+
+      if (index < 0 || index >= activities.length) return;
+      if (activities[index].id != activityId) return;
+      if (activities[index].activityPlace.trim() != placeAtRequestTime) return;
+
+      final top = scored.take(5).toList(growable: false);
+
+      if (top.length == 1) {
+        final only = top.first;
+        final onlyLat = (only['_lat'] as num?)?.toDouble();
+        final onlyLon = (only['_lon'] as num?)?.toDouble();
+        if (onlyLat == null || onlyLon == null) return;
+        updateActivityLocation(index, LatLng(onlyLat, onlyLon));
+        return;
+      }
+
+      final now = DateTime.now();
+      final lastQuery = _lastGeocodeDialogQuery[activityId];
+      final lastShownAt = _lastGeocodeDialogShownAt[activityId];
+      final recentlyShownSameQuery =
+          lastQuery == query && lastShownAt != null && now.difference(lastShownAt).inSeconds < 5;
+      if (recentlyShownSameQuery) {
+        return;
+      }
+      _lastGeocodeDialogQuery[activityId] = query;
+      _lastGeocodeDialogShownAt[activityId] = now;
+
+      await _showGeocodeResultsDialog(
+        activityId: activityId,
+        activityIndex: index,
+        query: query,
+        candidates: top,
+        nameAtRequestTime: placeAtRequestTime,
+      );
+    } catch (_) {
+      return;
+    }
+  }
+
+  Future<void> _showGeocodeResultsDialog({
+    required String activityId,
+    required int activityIndex,
+    required String query,
+    required List<Map<String, dynamic>> candidates,
+    required String nameAtRequestTime,
+  }) async {
+    if (Get.isDialogOpen == true) {
+      Get.back();
+    }
+
+    await Get.dialog(
+      SimpleDialog(
+        title: Text('Select location for "$query"'),
+        children: [
+          ...candidates.map((c) {
+            final display = (c['display_name'] ?? '').toString();
+            final lat = (c['_lat'] as num?)?.toDouble();
+            final lon = (c['_lon'] as num?)?.toDouble();
+            if (lat == null || lon == null) {
+              return const SizedBox.shrink();
+            }
+
+            return SimpleDialogOption(
+              onPressed: () {
+                if (activityIndex < 0 || activityIndex >= activities.length) {
+                  Get.back();
+                  return;
+                }
+                if (activities[activityIndex].id != activityId) {
+                  Get.back();
+                  return;
+                }
+                if (activities[activityIndex].activityName.trim() !=
+                    nameAtRequestTime) {
+                  Get.back();
+                  return;
+                }
+
+                updateActivityLocation(activityIndex, LatLng(lat, lon));
+                Get.back();
+              },
+              child: Text(display),
+            );
+          }),
+          SimpleDialogOption(
+            onPressed: () => Get.back(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+  }
+
   void updateActivityType(int index, String value) {
-  final current = activities[index];
+    if (index < 0 || index >= activities.length) return;
 
-  final updated = TourActivity(
-    id: current.id,
-    activityName: current.activityName,
-    activityType: value,
-    xPosition: current.xPosition,
-    yPosition: current.yPosition,
-    question: current.question,
-    questionType: current.questionType,
-    answerOptions: List<String>.from(current.answerOptions),
-    correctAnswer: current.correctAnswer,
-  );
+    final current = activities[index];
+    final updated = TourActivity(
+      id: current.id,
+      activityName: current.activityName,
+      activityPlace: current.activityPlace,
+      activityType: value,
+      latitude: current.latitude,
+      longitude: current.longitude,
+      question: current.question,
+      questionType: current.questionType,
+      answerOptions: List<String>.from(current.answerOptions),
+      correctAnswer: current.correctAnswer,
+      photoChallengeEnabled: current.photoChallengeEnabled,
+      photoChallengeText: current.photoChallengeText,
+    );
 
-  activities[index] = updated;
-}
-
-
-  void updateActivityXPosition(int index, String value) {
-    if (index >= 0 && index < activities.length) {
-      activities[index].xPosition = value;
-    }
+    activities[index] = updated;
   }
 
-  void updateActivityYPosition(int index, String value) {
-    if (index >= 0 && index < activities.length) {
-      activities[index].yPosition = value;
-    }
-  }
 
   void updateActivityQuestion(int index, String value) {
     if (index >= 0 && index < activities.length) {
@@ -350,12 +986,16 @@ class CreatePackageController extends GetxController {
     final updatedActivity = TourActivity(
       id: current.id,
       activityName: current.activityName,
-      xPosition: current.xPosition,
-      yPosition: current.yPosition,
+      activityPlace: current.activityPlace,
+      activityType: current.activityType,
+      latitude: current.latitude,
+      longitude: current.longitude,
       question: current.question,
       questionType: current.questionType,
       answerOptions: List<String>.from(current.answerOptions),
       correctAnswer: value,
+      photoChallengeEnabled: current.photoChallengeEnabled,
+      photoChallengeText: current.photoChallengeText,
     );
     activities[index] = updatedActivity;
 
@@ -370,12 +1010,16 @@ class CreatePackageController extends GetxController {
       final updatedActivity = TourActivity(
         id: currentActivity.id,
         activityName: currentActivity.activityName,
-        xPosition: currentActivity.xPosition,
-        yPosition: currentActivity.yPosition,
+        activityPlace: currentActivity.activityPlace,
+        activityType: currentActivity.activityType,
+        latitude: currentActivity.latitude,
+        longitude: currentActivity.longitude,
         question: currentActivity.question,
         questionType: value,
         answerOptions: List<String>.from(currentActivity.answerOptions),
         correctAnswer: value,
+        photoChallengeEnabled: currentActivity.photoChallengeEnabled,
+        photoChallengeText: currentActivity.photoChallengeText,
        
       );
 
@@ -426,6 +1070,11 @@ class CreatePackageController extends GetxController {
   Future<void> publishPackage() async {
     if (tourTitle.value.trim().isEmpty) {
       Get.snackbar('Error', 'Please enter tour title');
+      return;
+    }
+
+    if (activities.isEmpty) {
+      Get.snackbar('Error', 'Please add at least 1 activity');
       return;
     }
 
@@ -531,6 +1180,19 @@ class CreatePackageController extends GetxController {
     for (var controller in correctAnswerControllers) {
       controller.dispose();
     }
+    for (final t in _activityGeocodeDebounce.values) {
+      t.cancel();
+    }
+
+    for (final c in _activityPlaceSearchControllers.values) {
+      c.dispose();
+    }
+    _activityPlaceSearchControllers.clear();
+
+    _activityGeocodeDebounce.clear();
+    _lastGeocodeQuery.clear();
+    _lastGeocodeDialogQuery.clear();
+    _lastGeocodeDialogShownAt.clear();
     super.onClose();
   }
 }

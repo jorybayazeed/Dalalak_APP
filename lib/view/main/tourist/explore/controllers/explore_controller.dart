@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/services/user_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,8 +21,6 @@ class ExploreController extends GetxController {
 
   final RxList<Map<String, dynamic>> tours = <Map<String, dynamic>>[].obs;
 
-  Map<String, dynamic>? _touristProfile;
-
   Stream<List<Map<String, dynamic>>>? packagesStream;
 
   @override
@@ -37,12 +36,6 @@ class ExploreController extends GetxController {
     packagesStream!.listen((data) async {
       await _loadToursWithFavorites(data);
     });
-
-    _loadTouristProfile();
-  }
-
-  Future<void> _loadTouristProfile() async {
-    _touristProfile = await _userService.getCurrentUserData();
   }
 
   Future<void> _loadToursWithFavorites(List<Map<String, dynamic>> data) async {
@@ -121,6 +114,14 @@ class ExploreController extends GetxController {
         'tourId': tourId,
         'savedAt': FieldValue.serverTimestamp(),
       });
+
+      try {
+        await Get.find<GamificationService>().awardSaveTourPoints(
+          packageId: tourId,
+        );
+      } catch (_) {
+        // Ignore points errors.
+      }
     }
 
     final index = tours.indexWhere((tour) => tour['id'] == tourId);

@@ -9,6 +9,8 @@ class PackageDetailsController extends GetxController {
   final RxMap<String, dynamic> packageData = <String, dynamic>{}.obs;
   final RxString guideName = ''.obs;
   final RxString guideImage = ''.obs;
+  final RxBool isRatingsLoading = false.obs;
+  final RxList<Map<String, dynamic>> ratings = <Map<String, dynamic>>[].obs;
 
   final String packageId;
 
@@ -18,6 +20,61 @@ class PackageDetailsController extends GetxController {
   void onInit() {
     super.onInit();
     loadPackage();
+    loadRatings();
+  }
+
+  Future<void> loadRatings() async {
+    try {
+      isRatingsLoading.value = true;
+      ratings.clear();
+
+      final ratingsSnap = await FirebaseFirestore.instance
+          .collection('tourPackages')
+          .doc(packageId)
+          .collection('ratings')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final List<Map<String, dynamic>> loaded = [];
+
+      for (final doc in ratingsSnap.docs) {
+        final data = doc.data();
+        final userId = (data['userId'] ?? doc.id).toString();
+        String userName = 'Tourist';
+        String userImage = '';
+
+        if (userId.isNotEmpty) {
+          try {
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .get();
+            if (userDoc.exists) {
+              final u = userDoc.data();
+              userName = (u?['fullName'] ?? u?['name'] ?? 'Tourist').toString();
+              userImage = (u?['image'] ?? '').toString();
+            }
+          } catch (_) {
+            // Ignore user lookup errors.
+          }
+        }
+
+        loaded.add({
+          'userId': userId,
+          'userName': userName,
+          'userImage': userImage,
+          'rating': (data['rating'] as num?)?.toInt() ?? 0,
+          'review': (data['review'] ?? '').toString(),
+          'createdAt': data['createdAt'],
+        });
+      }
+
+      ratings.assignAll(loaded);
+    } catch (_) {
+      // Ignore ratings loading errors.
+    } finally {
+      isRatingsLoading.value = false;
+    }
   }
 
   Future<void> loadPackage() async {

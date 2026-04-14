@@ -71,8 +71,8 @@ class AuthenticationController extends GetxController {
     final password = passwordController.text;
     if (password.isEmpty) {
       passwordError.value = null; // No error if the field is empty
-    } else if (password.length != 10) {
-      passwordError.value = 'Password must be exactly 10 characters';
+    } else if (password.length < 10) {
+      passwordError.value = 'Password must be at least 10 characters';
     } else if (!password.contains(RegExp(r'[a-zA-Z]'))) {
       passwordError.value = 'Password must contain letters';
     } else if (!password.contains(RegExp(r'[0-9]'))) {
