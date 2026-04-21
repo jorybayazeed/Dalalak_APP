@@ -5,6 +5,8 @@ import 'package:tour_app/services/storage_service.dart';
 import 'package:tour_app/view/authentication/views/login_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tour_app/services/user_service.dart';
+import 'package:tour_app/view/main/tourist/profile/views/edit_profile_view.dart';
+import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 
 class TouristProfileController extends GetxController {
   final RxString selectedTab = 'Completed Tours'.obs;
@@ -14,7 +16,8 @@ class TouristProfileController extends GetxController {
 
   final RxInt toursCompleted = 0.obs;
   final RxInt savedTours = 0.obs;
-  final RxInt rewardPoints = 350.obs;
+  final RxInt rewardPoints = 0.obs;
+  final RxBool isSavingProfile = false.obs;
 
   final RxList<Map<String, dynamic>> completedTours =
       <Map<String, dynamic>>[].obs;
@@ -22,21 +25,39 @@ class TouristProfileController extends GetxController {
   final RxList<Map<String, dynamic>> savedToursList =
       <Map<String, dynamic>>[].obs;
 
+  StreamSubscription<Map<String, dynamic>?>? _userDataSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _savedToursSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _completedToursSub;
 
   @override
   void onInit() {
     super.onInit();
-    loadUserData();
+    listenToUserData();
     listenToSavedTours();
     listenToCompletedTours();
+  }
+
+  void listenToUserData() {
+    _userDataSub?.cancel();
+    _userDataSub = _userService.getCurrentUserDataStream().listen((data) {
+      if (data != null) {
+        userData.assignAll(data);
+        rewardPoints.value = (data['totalPoints'] as num?)?.toInt() ?? 0;
+      } else {
+        userData.clear();
+        rewardPoints.value = 0;
+      }
+    });
   }
 
   Future<void> loadUserData() async {
     final data = await _userService.getCurrentUserData();
     if (data != null) {
       userData.assignAll(data);
+      rewardPoints.value = (data['totalPoints'] as num?)?.toInt() ?? 0;
+    } else {
+      userData.clear();
+      rewardPoints.value = 0;
     }
   }
 
@@ -176,42 +197,92 @@ class TouristProfileController extends GetxController {
   }
 
   void editProfile() {
-    Get.snackbar(
-      'Edit Profile',
-      'Edit profile functionality not yet implemented.',
-    );
+    Get.to(() => const EditProfileView());
   }
-Future<void> removeSavedTour(String tourId) async {
-  try {
-    final userId = _userService.currentUserId;
 
-    if (userId == null || userId.isEmpty) {
-      Get.snackbar('Error', 'User not found');
-      return;
-    }
+  Future<void> saveProfile({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String countryOfResidence,
+    required String ageRange,
+    required String travelBudget,
+    required String travelPace,
+    required List<String> interests,
+  }) async {
+    try {
+      isSavingProfile.value = true;
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('savedTours')
-        .doc(tourId)
-        .delete();
+      final oldEmail = (userData['email'] ?? '').toString().trim();
+      final newEmail = email.trim();
 
-    Get.snackbar('Removed', 'Tour removed from saved tours');
-  } catch (e) {
-    Get.snackbar('Error', 'Failed to remove saved tour');
-  }
+      final emailChanged =
+          oldEmail.isNotEmpty &&
+          newEmail.isNotEmpty &&
+          oldEmail.toLowerCase() != newEmail.toLowerCase();
+
+      await _userService.updateCurrentUserProfile(
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        countryOfResidence: countryOfResidence,
+        ageRange: ageRange,
+        travelBudget: travelBudget,
+        travelPace: travelPace,
+        interests: interests,
+      );
+
+      await loadUserData();
+      if (Get.isRegistered<TouristHomeController>()) {
+  final homeController = Get.find<TouristHomeController>();
+  await homeController.loadUserInterests();
+  homeController.loadTours();
 }
-  Future<void> logout() async {
-    final authService = Get.find<AuthService>();
-    await authService.signOut();
-    await StorageService.clearAll();
-    Get.offAll(() => const LoginView());
+
+      Get.back();
+
+      Get.snackbar(
+        'Success',
+        emailChanged
+            ? 'Profile updated. Please verify your new email before signing in with it.'
+            : 'Profile updated successfully',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+      );
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        e.toString().replaceFirst('Exception: ', ''),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      isSavingProfile.value = false;
+    }
   }
 
-  @override
-  void onClose() {
-    _savedToursSub?.cancel();
+  Future<void> removeSavedTour(String tourId) async {
+    try {
+      final userId = _userService.currentUserId;
+
+      if (userId == null || userId.isEmpty) {
+        Get.snackbar('Error', 'User not found');
+        return;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('savedTours')
+          .doc(tourId)
+          .delete();
+
+      Get.snackbar('Removed', 'Tour removed from saved tours');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to remove saved tour');
+    }
+  }
+
+  Future<void> logout() async {
     _completedToursSub?.cancel();
     super.onClose();
   }

@@ -15,7 +15,6 @@ class AuthenticationController extends GetxController {
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
-  // Phone number fields
   final RxString countryCode = '+966'.obs;
   final RxString phoneNumber = ''.obs;
   final RxString fullPhoneNumber = ''.obs;
@@ -29,18 +28,22 @@ class AuthenticationController extends GetxController {
   final RxBool isLoginPasswordVisible = false.obs;
   final RxBool isLoading = false.obs;
 
-  // Real-time validation errors
   final RxnString emailError = RxnString(null);
   final RxnString passwordError = RxnString(null);
   final RxnString confirmPasswordError = RxnString(null);
 
+  final RxBool hasMinLength = false.obs;
+  final RxBool hasUppercase = false.obs;
+  final RxBool hasLowercase = false.obs;
+  final RxBool hasNumber = false.obs;
+  final RxBool hasSpecialChar = false.obs;
+  final RxDouble passwordStrength = 0.0.obs;
+  final RxString passwordStrengthLabel = ''.obs;
 
-  // Tour Guide specific fields
   final RxString yearsOfExperience = ''.obs;
   final RxString specialization = ''.obs;
   final RxList<String> languagesSpoken = <String>[].obs;
 
-  // Tourist specific fields
   final RxString age = ''.obs;
   final RxString countryOfResidence = ''.obs;
   final RxString travelBudget = ''.obs;
@@ -50,7 +53,6 @@ class AuthenticationController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Add listeners for real-time validation
     emailController.addListener(_validateEmail);
     passwordController.addListener(_validatePassword);
     confirmPasswordController.addListener(_validateConfirmPassword);
@@ -59,30 +61,68 @@ class AuthenticationController extends GetxController {
   void _validateEmail() {
     final email = emailController.text;
     if (email.isEmpty) {
-      emailError.value = null; // No error if the field is empty
+      emailError.value = null;
     } else if (!GetUtils.isEmail(email)) {
       emailError.value = 'Please enter a valid email address';
     } else {
-      emailError.value = null; // Clear error if all checks pass
+      emailError.value = null;
     }
   }
 
   void _validatePassword() {
-    final password = passwordController.text;
+    final password = passwordController.text.trim();
+
     if (password.isEmpty) {
-      passwordError.value = null; // No error if the field is empty
-    } else if (password.length < 10) {
-      passwordError.value = 'Password must be at least 10 characters';
-    } else if (!password.contains(RegExp(r'[a-zA-Z]'))) {
-      passwordError.value = 'Password must contain letters';
-    } else if (!password.contains(RegExp(r'[0-9]'))) {
-      passwordError.value = 'Password must contain a number';
-    } else if (!password.contains(RegExp(r'[_-]'))) {
-      passwordError.value = "Password must contain either '-' or '_'";
-    } else {
-      passwordError.value = null; // Clear error if all checks pass
+      passwordError.value = null;
+      hasMinLength.value = false;
+      hasUppercase.value = false;
+      hasLowercase.value = false;
+      hasNumber.value = false;
+      hasSpecialChar.value = false;
+      passwordStrength.value = 0.0;
+      passwordStrengthLabel.value = '';
+      _validateConfirmPassword();
+      return;
     }
-    // Re-validate the confirm password field whenever the password changes
+
+    hasMinLength.value = password.length >= 8;
+    hasUppercase.value = RegExp(r'[A-Z]').hasMatch(password);
+    hasLowercase.value = RegExp(r'[a-z]').hasMatch(password);
+    hasNumber.value = RegExp(r'[0-9]').hasMatch(password);
+    hasSpecialChar.value =
+        RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]').hasMatch(password);
+
+    int passedRules = 0;
+    if (hasMinLength.value) passedRules++;
+    if (hasUppercase.value) passedRules++;
+    if (hasLowercase.value) passedRules++;
+    if (hasNumber.value) passedRules++;
+    if (hasSpecialChar.value) passedRules++;
+
+    passwordStrength.value = passedRules / 5;
+
+    if (passedRules <= 2) {
+      passwordStrengthLabel.value = 'Weak';
+    } else if (passedRules <= 4) {
+      passwordStrengthLabel.value = 'Medium';
+    } else {
+      passwordStrengthLabel.value = 'Strong';
+    }
+
+    if (!hasMinLength.value) {
+      passwordError.value = 'Password must be at least 8 characters';
+    } else if (!hasUppercase.value) {
+      passwordError.value = 'Must contain at least one uppercase letter';
+    } else if (!hasLowercase.value) {
+      passwordError.value = 'Must contain at least one lowercase letter';
+    } else if (!hasNumber.value) {
+      passwordError.value = 'Must contain at least one number';
+    } else if (!hasSpecialChar.value) {
+      passwordError.value = 'Must contain at least one special character';
+    } else {
+      passwordError.value = null;
+    }
+
     _validateConfirmPassword();
   }
 
@@ -91,19 +131,16 @@ class AuthenticationController extends GetxController {
     final confirmPassword = confirmPasswordController.text;
 
     if (confirmPassword.isEmpty) {
-      confirmPasswordError.value =
-          null; // No error if the field is empty
+      confirmPasswordError.value = null;
     } else if (password != confirmPassword) {
       confirmPasswordError.value = 'Passwords do not match';
     } else {
-      confirmPasswordError.value = null; // Clear error if they match
+      confirmPasswordError.value = null;
     }
   }
 
-
   void toggleRole(String role) {
     selectedRole.value = role;
-    // Clear tour guide fields when switching to Tourist
     if (role == 'Tourist') {
       yearsOfExperience.value = '';
       specialization.value = '';
@@ -170,105 +207,104 @@ class AuthenticationController extends GetxController {
   }
 
   bool _isFormValid() {
-      _validateEmail();
-      _validatePassword();
-      _validateConfirmPassword();
+    _validateEmail();
+    _validatePassword();
+    _validateConfirmPassword();
 
-      if (fullNameController.text.trim().isEmpty) {
-        Get.snackbar('Error', 'Please enter your full name');
+    if (fullNameController.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter your full name');
+      return false;
+    }
+
+    if (emailController.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter your email');
+      return false;
+    }
+
+    if (emailError.value != null) {
+      Get.snackbar('Error', emailError.value!);
+      return false;
+    }
+
+    if (phoneNumber.value.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter your phone number');
+      return false;
+    }
+
+    final cleanedPhone = phoneNumber.value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanedPhone.length < 9 || cleanedPhone.length > 15) {
+      Get.snackbar('Error', 'Please enter a valid phone number');
+      return false;
+    }
+
+    if (passwordController.text.isEmpty) {
+      Get.snackbar('Error', 'Please enter a password');
+      return false;
+    }
+
+    if (passwordError.value != null) {
+      Get.snackbar('Error', passwordError.value!);
+      return false;
+    }
+
+    if (confirmPasswordController.text.isEmpty) {
+      Get.snackbar('Error', 'Please confirm your password');
+      return false;
+    }
+
+    if (confirmPasswordError.value != null) {
+      Get.snackbar('Error', confirmPasswordError.value!);
+      return false;
+    }
+
+    if (selectedRole.value == 'Tour Guide') {
+      if (yearsOfExperience.value.isEmpty) {
+        Get.snackbar('Error', 'Please select years of experience');
         return false;
       }
-
-      if (emailController.text.trim().isEmpty) {
-        Get.snackbar('Error', 'Please enter your email');
+      if (specialization.value.isEmpty) {
+        Get.snackbar('Error', 'Please select specialization');
         return false;
       }
-      
-      if (emailError.value != null) {
-        Get.snackbar('Error', emailError.value!);
+      if (languagesSpoken.isEmpty) {
+        Get.snackbar('Error', 'Please select at least one language');
         return false;
       }
+    }
 
-      if (phoneNumber.value.trim().isEmpty) {
-        Get.snackbar('Error', 'Please enter your phone number');
+    if (selectedRole.value == 'Tourist') {
+      if (age.value.isEmpty) {
+        Get.snackbar('Error', 'Please select your age range');
         return false;
       }
-
-      final cleanedPhone = phoneNumber.value.replaceAll(RegExp(r'[^0-9]'), '');
-      if (cleanedPhone.length < 9 || cleanedPhone.length > 15) {
-        Get.snackbar('Error', 'Please enter a valid phone number');
+      if (countryOfResidence.value.isEmpty) {
+        Get.snackbar('Error', 'Please enter your country of residence');
         return false;
       }
-
-      if (passwordController.text.isEmpty) {
-        Get.snackbar('Error', 'Please enter a password');
+      if (travelBudget.value.isEmpty) {
+        Get.snackbar('Error', 'Please select your travel budget');
         return false;
       }
-
-      if (passwordError.value != null) {
-        Get.snackbar('Error', passwordError.value!);
+      if (travelPace.value.isEmpty) {
+        Get.snackbar('Error', 'Please select your preferred travel pace');
         return false;
       }
-
-      if (confirmPasswordController.text.isEmpty) {
-        Get.snackbar('Error', 'Please confirm your password');
+      if (interests.isEmpty) {
+        Get.snackbar('Error', 'Please select at least one interest');
         return false;
       }
+    }
 
-      if (confirmPasswordError.value != null) {
-        Get.snackbar('Error', confirmPasswordError.value!);
-        return false;
-      }
-
-      if (selectedRole.value == 'Tour Guide') {
-        if (yearsOfExperience.value.isEmpty) {
-          Get.snackbar('Error', 'Please select years of experience');
-          return false;
-        }
-        if (specialization.value.isEmpty) {
-          Get.snackbar('Error', 'Please select specialization');
-          return false;
-        }
-        if (languagesSpoken.isEmpty) {
-          Get.snackbar('Error', 'Please select at least one language');
-          return false;
-        }
-      }
-
-      if (selectedRole.value == 'Tourist') {
-        if (age.value.isEmpty) {
-          Get.snackbar('Error', 'Please select your age range');
-          return false;
-        }
-        if (countryOfResidence.value.isEmpty) {
-          Get.snackbar('Error', 'Please enter your country of residence');
-          return false;
-        }
-        if (travelBudget.value.isEmpty) {
-          Get.snackbar('Error', 'Please select your travel budget');
-          return false;
-        }
-        if (travelPace.value.isEmpty) {
-          Get.snackbar('Error', 'Please select your preferred travel pace');
-          return false;
-        }
-        if (interests.isEmpty) {
-          Get.snackbar('Error', 'Please select at least one interest');
-          return false;
-        }
-      }
-      return true;
+    return true;
   }
 
   Future<void> createAccount() async {
     if (!_isFormValid()) {
-      return; // Stop if form is not valid
+      return;
     }
 
-    // Combine country code and phone number
     final cleanedPhone = phoneNumber.value.replaceAll(RegExp(r'[^0-9]'), '');
     fullPhoneNumber.value = '${countryCode.value}$cleanedPhone';
-
 
     isLoading.value = true;
 
@@ -279,20 +315,22 @@ class AuthenticationController extends GetxController {
         fullName: fullNameController.text.trim(),
         phone: fullPhoneNumber.value,
         userType: selectedRole.value,
-        yearsOfExperience: selectedRole.value == 'Tour Guide'
-            ? yearsOfExperience.value
-            : null,
-        specialization: selectedRole.value == 'Tour Guide'
-            ? specialization.value
-            : null,
-        languagesSpoken: selectedRole.value == 'Tour Guide'
-            ? languagesSpoken.toList()
-            : null,
+        yearsOfExperience:
+            selectedRole.value == 'Tour Guide' ? yearsOfExperience.value : null,
+        specialization:
+            selectedRole.value == 'Tour Guide' ? specialization.value : null,
+        languagesSpoken:
+            selectedRole.value == 'Tour Guide'
+                ? languagesSpoken.toList()
+                : null,
         age: selectedRole.value == 'Tourist' ? age.value : null,
-        countryOfResidence: selectedRole.value == 'Tourist' ? countryOfResidence.value : null,
-        travelBudget: selectedRole.value == 'Tourist' ? travelBudget.value : null,
+        countryOfResidence:
+            selectedRole.value == 'Tourist' ? countryOfResidence.value : null,
+        travelBudget:
+            selectedRole.value == 'Tourist' ? travelBudget.value : null,
         travelPace: selectedRole.value == 'Tourist' ? travelPace.value : null,
-        interests: selectedRole.value == 'Tourist' ? interests.toList() : null,
+        interests:
+            selectedRole.value == 'Tourist' ? interests.toList() : null,
       );
 
       isLoading.value = false;
@@ -331,6 +369,11 @@ class AuthenticationController extends GetxController {
       return;
     }
 
+    if (!GetUtils.isEmail(loginEmailController.text.trim())) {
+      Get.snackbar('Error', 'Please enter a valid email address');
+      return;
+    }
+
     if (loginPasswordController.text.isEmpty) {
       Get.snackbar('Error', 'Please enter your password');
       return;
@@ -354,11 +397,54 @@ class AuthenticationController extends GetxController {
         _navigateToHome(result['userType'] as String);
         _clearLoginControllers();
       } else {
-        Get.snackbar('Error', result['message'] as String);
+        String message = 'Login failed';
+        final error = (result['message'] as String).toLowerCase();
+
+        if (error.contains('user-not-found')) {
+          message = 'No account found with this email';
+        } else if (error.contains('wrong-password')) {
+          message = 'Incorrect password';
+        } else if (error.contains('invalid-email')) {
+          message = 'Invalid email format';
+        } else if (error.contains('too-many-requests')) {
+          message = 'Too many attempts. Try again later';
+        } else {
+          message = 'Email or password is incorrect';
+        }
+
+        Get.snackbar('Login Failed', message);
       }
     } catch (e) {
       isLoading.value = false;
       Get.snackbar('Error', 'An unexpected error occurred');
+    }
+  }
+
+  Future<void> resetPassword(String email) async {
+    if (email.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter your email first');
+      return;
+    }
+
+    if (!GetUtils.isEmail(email.trim())) {
+      Get.snackbar('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    try {
+      await _authService.sendPasswordReset(email.trim());
+
+      Get.snackbar(
+        'Success',
+        'Password reset email sent',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to send reset email',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -387,6 +473,13 @@ class AuthenticationController extends GetxController {
     travelBudget.value = '';
     travelPace.value = '';
     interests.clear();
+    hasMinLength.value = false;
+    hasUppercase.value = false;
+    hasLowercase.value = false;
+    hasNumber.value = false;
+    hasSpecialChar.value = false;
+    passwordStrength.value = 0.0;
+    passwordStrengthLabel.value = '';
   }
 
   void _clearLoginControllers() {
@@ -399,13 +492,6 @@ class AuthenticationController extends GetxController {
     emailController.removeListener(_validateEmail);
     passwordController.removeListener(_validatePassword);
     confirmPasswordController.removeListener(_validateConfirmPassword);
-    // fullNameController.dispose();
-    // emailController.dispose();
-    // phoneController.dispose();
-    // passwordController.dispose();
-    // confirmPasswordController.dispose();
-    // loginEmailController.dispose();
-    // loginPasswordController.dispose();
     super.onClose();
   }
 }

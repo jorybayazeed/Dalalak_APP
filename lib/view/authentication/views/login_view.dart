@@ -194,14 +194,21 @@ class LoginView extends StatelessWidget {
                     SizedBox(height: 12.h),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: Text(
-                        'Forgot Password?',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF00A86B),
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: GestureDetector(
+  onTap: () {
+    controller.resetPassword(
+      controller.loginEmailController.text,
+    );
+  },
+  child: Text(
+    'Forgot Password?',
+    style: GoogleFonts.inter(
+      color: const Color(0xFF00A86B),
+      fontSize: 14.sp,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+),
                     ),
                     SizedBox(height: 32.h),
                     Obx(

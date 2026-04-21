@@ -16,11 +16,12 @@ class TouristRewardsView extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
-              child: Row(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
                   GestureDetector(
                     onTap: () => Get.back<void>(),
@@ -47,47 +48,241 @@ class TouristRewardsView extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: 18.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _PointsCard(home: home),
-                    SizedBox(height: 16.h),
-                    const _PointsReportSection(),
-                    SizedBox(height: 16.h),
-                    Text(
-                      'Milestones',
-                      style: GoogleFonts.inter(
-                        color: Colors.black,
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 12.h),
-                    Obx(() {
-                      final points = home.totalPoints.value;
-                      return _MilestonesGrid(points: points);
-                    }),
-                    SizedBox(height: 16.h),
-                    _EarnedBadgesSection(home: home),
-                    SizedBox(height: 16.h),
-                    _LockedBadgesSection(),
-                    SizedBox(height: 16.h),
-                    _HowToEarnPointsSection(),
-                    SizedBox(height: 24.h),
-                  ],
+              SizedBox(height: 14.h),
+              _PointsCard(home: home),
+              SizedBox(height: 16.h),
+              const _PointsReportSection(),
+              SizedBox(height: 16.h),
+              Text(
+                'Milestones',
+                style: GoogleFonts.inter(
+                  color: Colors.black,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 12.h),
+              Obx(() {
+                final points = home.totalPoints.value;
+                return _MilestonesGrid(points: points);
+              }),
+              SizedBox(height: 16.h),
+              _EarnedBadgesSection(home: home),
+              SizedBox(height: 16.h),
+              _LockedBadgesSection(),
+              SizedBox(height: 16.h),
+              _HowToEarnPointsSection(),
+              SizedBox(height: 24.h),
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
+class _PointsCard extends StatelessWidget {
+  const _PointsCard({required this.home});
+
+  final TouristHomeController home;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final points = home.totalPoints.value;
+      final levelName = home.levelName.value;
+      final levelDescription = home.levelDescription.value;
+      final levelNumber = home.levelNumber.value;
+      final nextLevelName = home.nextLevelName.value;
+      final remaining = home.remainingPointsToNextLevel.value;
+      final progress = home.levelProgress.value.clamp(0.0, 1.0);
+      final badges = home.badgesCount.value;
+
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(18.w),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18.r),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFA000), Color(0xFFF57C00)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(31),
+              blurRadius: 16,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 58.w,
+                  height: 58.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(46),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.emoji_events,
+                    color: Colors.white,
+                    size: 28.sp,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Total Points',
+                        style: GoogleFonts.inter(
+                          color: Colors.white.withAlpha(230),
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        '$points',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 40.sp,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Current Level',
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withAlpha(230),
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      levelName,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      'Level $levelNumber',
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withAlpha(217),
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              levelDescription,
+              style: GoogleFonts.inter(
+                color: Colors.white.withAlpha(230),
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(46),
+                    borderRadius: BorderRadius.circular(18.r),
+                  ),
+                  child: Text(
+                    levelName,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(46),
+                    borderRadius: BorderRadius.circular(18.r),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.verified, color: Colors.white, size: 14.sp),
+                      SizedBox(width: 6.w),
+                      Text(
+                        '$badges Badges',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 14.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  nextLevelName.isEmpty
+                      ? 'Maximum level reached'
+                      : '$remaining pts to $nextLevelName',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withAlpha(230),
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${(progress * 100).round()}%',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withAlpha(230),
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14.r),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 12.h,
+                backgroundColor: Colors.white.withAlpha(64),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
 }
 
 class _PointsReportSection extends StatelessWidget {
@@ -277,197 +472,6 @@ class _PointsReportSection extends StatelessWidget {
   }
 }
 
-class _PointsCard extends StatelessWidget {
-  const _PointsCard({required this.home});
-
-  final TouristHomeController home;
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      final points = home.totalPoints.value;
-      final level = home.level.value;
-      final badges = home.badgesCount.value;
-
-      const nextMilestone = 1000;
-      final progress = (points / nextMilestone).clamp(0.0, 1.0);
-
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(18.w),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18.r),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFFA000), Color(0xFFF57C00)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(31),
-              blurRadius: 16,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 58.w,
-                  height: 58.h,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(46),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.emoji_events,
-                    color: Colors.white,
-                    size: 28.sp,
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Your Total Points',
-                        style: GoogleFonts.inter(
-                          color: Colors.white.withAlpha(230),
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        '$points',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 40.sp,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Next Reward',
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withAlpha(230),
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    Text(
-                      '${(nextMilestone - points).clamp(0, nextMilestone)} pts',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      'to unlock Free tour upgrade',
-                      textAlign: TextAlign.right,
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withAlpha(217),
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 12.h),
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(46),
-                    borderRadius: BorderRadius.circular(18.r),
-                  ),
-                  child: Text(
-                    level,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10.w),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(46),
-                    borderRadius: BorderRadius.circular(18.r),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.verified, color: Colors.white, size: 14.sp),
-                      SizedBox(width: 6.w),
-                      Text(
-                        '$badges Badges',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 14.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$points / $nextMilestone points',
-                  style: GoogleFonts.inter(
-                    color: Colors.white.withAlpha(230),
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  '${(progress * 100).round()}%',
-                  style: GoogleFonts.inter(
-                    color: Colors.white.withAlpha(230),
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8.h),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14.r),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 12.h,
-                backgroundColor: Colors.white.withAlpha(64),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-}
-
 class _MilestonesGrid extends StatelessWidget {
   const _MilestonesGrid({required this.points});
 
@@ -489,7 +493,7 @@ class _MilestonesGrid extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 12.h,
         crossAxisSpacing: 12.w,
-        childAspectRatio: 2.1,
+        childAspectRatio: 1.4,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -735,7 +739,7 @@ class _LockedBadgesSection extends StatelessWidget {
             crossAxisCount: 2,
             mainAxisSpacing: 12.h,
             crossAxisSpacing: 12.w,
-            childAspectRatio: 0.82,
+            childAspectRatio: 0.72,
           ),
           itemCount: locked.length,
           itemBuilder: (context, index) {
@@ -781,141 +785,129 @@ class _BadgeCard extends StatelessWidget {
   final bool locked;
   final Map<String, dynamic>? progress;
 
-  @override
-  Widget build(BuildContext context) {
-    final progressValue = (progress?['value'] as num?)?.toDouble();
-    final progressText = (progress?['text'] ?? '').toString();
+ @override
+Widget build(BuildContext context) {
+  final progressValue = (progress?['value'] as num?)?.toDouble();
+  final progressText = (progress?['text'] ?? '').toString();
 
-    return Container(
-      padding: EdgeInsets.all(10.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: const Color(0xFFEDEDED)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(13),
-            blurRadius: 16,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40.w,
-                height: 40.h,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  color: locked ? const Color(0xFFB0B0B0) : const Color(0xFFFF9800),
-                  size: 20.sp,
-                ),
+  return Container(
+    padding: EdgeInsets.all(8.w),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18.r),
+      border: Border.all(color: const Color(0xFFEDEDED)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 34.w,
+              height: 34.w,
+              decoration: BoxDecoration(
+                color: iconBg,
+                shape: BoxShape.circle,
               ),
-              const Spacer(),
-              if (locked)
-                Container(
-                  width: 24.w,
-                  height: 24.h,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF0F0F0),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.lock, color: const Color(0xFF9E9E9E), size: 14.sp),
-                ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              color: Colors.black,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w800,
+              child: Icon(
+                icon,
+                size: 18.sp,
+                color: locked ? const Color(0xFF8E8E93) : const Color(0xFFF2994A),
+              ),
             ),
+            const Spacer(),
+            if (locked)
+              const Icon(Icons.lock_outline, size: 16, color: Color(0xFF8E8E93)),
+          ],
+        ),
+        SizedBox(height: 10.h),
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(
+            color: const Color(0xFF1C1C1E),
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w700,
           ),
-          SizedBox(height: 4.h),
+        ),
+        SizedBox(height: 4.h),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(
+            color: const Color(0xFF6B6B6B),
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w500,
+            height: 1.35,
+          ),
+        ),
+        SizedBox(height: 4.h),
+        if (!locked && date.isNotEmpty)
           Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            date,
             style: GoogleFonts.inter(
-              color: const Color(0xFF777777),
+              color: const Color(0xFF8E8E93),
               fontSize: 10.sp,
               fontWeight: FontWeight.w500,
             ),
           ),
+        if (progressValue != null) ...[
           SizedBox(height: 8.h),
-          if (progressValue != null) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  progressText,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF555555),
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  '${(progressValue * 100).round()}%',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF555555),
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 6.h),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12.r),
-              child: LinearProgressIndicator(
-                value: progressValue.clamp(0.0, 1.0),
-                minHeight: 8.h,
-                backgroundColor: const Color(0xFFEDEDED),
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF4081)),
-              ),
-            ),
-            SizedBox(height: 6.h),
-          ],
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.star, color: const Color(0xFFFF9800), size: 14.sp),
-              SizedBox(width: 6.w),
               Text(
-                '+$points pts',
+                progressText,
                 style: GoogleFonts.inter(
-                  color: const Color(0xFFFF9800),
+                  color: const Color(0xFF1C1C1E),
                   fontSize: 10.sp,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const Spacer(),
-              if (!locked && date.isNotEmpty)
-                Text(
-                  date,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF999999),
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
+              Text(
+                '${(progressValue * 100).round()}%',
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF6B6B6B),
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
             ],
           ),
+          SizedBox(height: 6.h),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999.r),
+            child: LinearProgressIndicator(
+              value: progressValue,
+              minHeight: 6.h,
+              backgroundColor: const Color(0xFFEAEAEA),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFFE85D75)),
+            ),
+          ),
         ],
-      ),
-    );
-  }
+        SizedBox(height: 8.h),
+        Text(
+          '+$points pts',
+          style: GoogleFonts.inter(
+            color: const Color(0xFFF2994A),
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }
 
 class _HowToEarnPointsSection extends StatelessWidget {
@@ -948,19 +940,8 @@ class _HowToEarnPointsSection extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(18.w),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18.r),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFA000), Color(0xFFF57C00)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(20),
-            blurRadius: 16,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: const Color(0xFFE38B2C),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -969,7 +950,7 @@ class _HowToEarnPointsSection extends StatelessWidget {
             'How to Earn Points',
             style: GoogleFonts.inter(
               color: Colors.white,
-              fontSize: 16.sp,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -977,15 +958,16 @@ class _HowToEarnPointsSection extends StatelessWidget {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            itemCount: items.length,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              mainAxisSpacing: 12.h,
               crossAxisSpacing: 12.w,
-              childAspectRatio: 1.85,
+              mainAxisSpacing: 12.h,
+              childAspectRatio: 1.35,
             ),
-            itemCount: items.length,
             itemBuilder: (context, index) {
               final it = items[index];
+
               return Container(
                 padding: EdgeInsets.all(14.w),
                 decoration: BoxDecoration(
@@ -996,7 +978,7 @@ class _HowToEarnPointsSection extends StatelessWidget {
                   children: [
                     Container(
                       width: 34.w,
-                      height: 34.h,
+                      height: 34.w,
                       decoration: BoxDecoration(
                         color: Colors.white.withAlpha(46),
                         shape: BoxShape.circle,
@@ -1009,34 +991,36 @@ class _HowToEarnPointsSection extends StatelessWidget {
                     ),
                     SizedBox(width: 10.w),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            (it['title'] ?? '').toString(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            (it['points'] ?? '').toString(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              color: Colors.white.withAlpha(230),
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+  child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        (it['title'] ?? '').toString(),
+        maxLines: 2,
+        overflow: TextOverflow.visible,
+        style: GoogleFonts.inter(
+          color: Colors.white,
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w800,
+          height: 1.2,
+        ),
+      ),
+      SizedBox(height: 4.h),
+      Text(
+        (it['points'] ?? '').toString(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.inter(
+          color: Colors.white.withAlpha(230),
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ],
+  ),
+)
                   ],
                 ),
               );

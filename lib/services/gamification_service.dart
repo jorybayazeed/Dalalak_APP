@@ -4,6 +4,20 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
+class LevelConfig {
+  final int level;
+  final String name;
+  final String description;
+  final int minPoints;
+
+  const LevelConfig({
+    required this.level,
+    required this.name,
+    required this.description,
+    required this.minPoints,
+  });
+}
+
 class SubmitQuizAnswerResult {
   final int pointsEarned;
   final bool alreadyAnswered;
@@ -33,16 +47,119 @@ class GamificationService extends GetxService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
+  static const List<LevelConfig> levels = [
+    LevelConfig(
+      level: 1,
+      name: 'Starter',
+      description: 'Beginning the journey',
+      minPoints: 0,
+    ),
+    LevelConfig(
+      level: 2,
+      name: 'Explorer',
+      description: 'Discovering new places',
+      minPoints: 100,
+    ),
+    LevelConfig(
+      level: 3,
+      name: 'Traveler',
+      description: 'Gaining travel experience',
+      minPoints: 250,
+    ),
+    LevelConfig(
+      level: 4,
+      name: 'Adventurer',
+      description: 'Exploring deeper experiences',
+      minPoints: 450,
+    ),
+    LevelConfig(
+      level: 5,
+      name: 'Guide',
+      description: 'Knows the paths well',
+      minPoints: 700,
+    ),
+    LevelConfig(
+      level: 6,
+      name: 'Expert',
+      description: 'Highly experienced traveler',
+      minPoints: 1000,
+    ),
+    LevelConfig(
+      level: 7,
+      name: 'Master',
+      description: 'Top level of achievement',
+      minPoints: 1400,
+    ),
+  ];
+
   String? get currentUserId => _auth.currentUser?.uid;
 
   String _normalizeAnswer(String v) => v.trim().toLowerCase();
+
+  LevelConfig getLevelFromPoints(int points) {
+    LevelConfig current = levels.first;
+
+    for (final level in levels) {
+      if (points >= level.minPoints) {
+        current = level;
+      } else {
+        break;
+      }
+    }
+
+    return current;
+  }
+
+  LevelConfig? getNextLevelFromPoints(int points) {
+    for (final level in levels) {
+      if (points < level.minPoints) {
+        return level;
+      }
+    }
+    return null;
+  }
+
+  int getRemainingPointsToNextLevel(int points) {
+    final next = getNextLevelFromPoints(points);
+    if (next == null) return 0;
+    return next.minPoints - points;
+  }
+
+  double getLevelProgress(int points) {
+    final current = getLevelFromPoints(points);
+    final next = getNextLevelFromPoints(points);
+
+    if (next == null) return 1.0;
+
+    final span = next.minPoints - current.minPoints;
+    if (span <= 0) return 1.0;
+
+    return ((points - current.minPoints) / span).clamp(0.0, 1.0);
+  }
+
+  Map<String, dynamic> getLevelSummary(int points) {
+    final current = getLevelFromPoints(points);
+    final next = getNextLevelFromPoints(points);
+
+    return {
+      'levelNumber': current.level,
+      'levelName': current.name,
+      'levelDescription': current.description,
+      'currentMinPoints': current.minPoints,
+      'nextLevelName': next?.name,
+      'nextLevelPoints': next?.minPoints,
+      'remainingPoints': getRemainingPointsToNextLevel(points),
+      'progress': getLevelProgress(points),
+      'isMaxLevel': next == null,
+    };
+  }
 
   Future<int> _awardOnce({
     required String eventId,
     required int points,
     required Map<String, dynamic> eventData,
   }) async {
-    final userId = currentUserId;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
@@ -61,14 +178,17 @@ class GamificationService extends GetxService {
           (userSnap.data() as Map<String, dynamic>?) ?? <String, dynamic>{};
       final currentPoints = (userData['totalPoints'] as num?)?.toInt() ?? 0;
       final newTotalPoints = currentPoints + points;
-      final newLevel = (newTotalPoints ~/ 500) + 1;
+
+      final levelData = getLevelFromPoints(newTotalPoints);
 
       if (!userSnap.exists) {
         tx.set(
           userRef,
           {
             'totalPoints': newTotalPoints,
-            'level': newLevel,
+            'level': levelData.name,
+            'levelNumber': levelData.level,
+            'levelDescription': levelData.description,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           },
@@ -77,7 +197,9 @@ class GamificationService extends GetxService {
       } else {
         tx.update(userRef, {
           'totalPoints': newTotalPoints,
-          'level': newLevel,
+          'level': levelData.name,
+          'levelNumber': levelData.level,
+          'levelDescription': levelData.description,
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
@@ -90,7 +212,11 @@ class GamificationService extends GetxService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _triggerBadgeCheck(tx: tx, userRef: userRef, totalPoints: newTotalPoints);
+      await _triggerBadgeCheck(
+        tx: tx,
+        userRef: userRef,
+        totalPoints: newTotalPoints,
+      );
 
       return points;
     });
@@ -130,7 +256,8 @@ class GamificationService extends GetxService {
   }
 
   Future<int> awardTourCompletionPoints({required String packageId}) async {
-    final tourSnap = await _firestore.collection('tourPackages').doc(packageId).get();
+    final tourSnap =
+        await _firestore.collection('tourPackages').doc(packageId).get();
     if (!tourSnap.exists) {
       return 0;
     }
@@ -200,7 +327,8 @@ class GamificationService extends GetxService {
         continue;
       }
 
-      final tourSnap = await _firestore.collection('tourPackages').doc(packageId).get();
+      final tourSnap =
+          await _firestore.collection('tourPackages').doc(packageId).get();
       if (!tourSnap.exists) {
         toDelete.add(evDoc.reference);
         continue;
@@ -209,11 +337,13 @@ class GamificationService extends GetxService {
       final tourData = tourSnap.data() as Map<String, dynamic>;
       final live = tourData['liveTourState'] as Map<String, dynamic>?;
       final ended = (live?['ended'] as bool?) ?? false;
-      final activities = (tourData['activities'] as List<dynamic>?) ?? const [];
+      final activities =
+          (tourData['activities'] as List<dynamic>?) ?? const [];
       final totalActivities = activities.length;
 
       final completedIds = completedActivitiesByPackage[packageId] ?? <String>{};
-      final completedAll = totalActivities > 0 && completedIds.length >= totalActivities;
+      final completedAll =
+          totalActivities > 0 && completedIds.length >= totalActivities;
 
       if (!ended || !completedAll) {
         toDelete.add(evDoc.reference);
@@ -224,7 +354,8 @@ class GamificationService extends GetxService {
       const batchLimit = 400;
       for (var i = 0; i < toDelete.length; i += batchLimit) {
         final batch = _firestore.batch();
-        final end = (i + batchLimit) > toDelete.length ? toDelete.length : (i + batchLimit);
+        final end =
+            (i + batchLimit) > toDelete.length ? toDelete.length : (i + batchLimit);
         for (var j = i; j < end; j++) {
           batch.delete(toDelete[j]);
         }
@@ -278,17 +409,19 @@ class GamificationService extends GetxService {
       sum += (d.data()['pointsEarned'] as num?)?.toInt() ?? 0;
     }
 
-    final computedLevel = (sum ~/ 500) + 1;
+    final levelData = getLevelFromPoints(sum);
 
     await _firestore.runTransaction((tx) async {
       final snap = await tx.get(userRef);
       final data = (snap.data() as Map<String, dynamic>?) ?? <String, dynamic>{};
       final current = (data['totalPoints'] as num?)?.toInt() ?? 0;
-      final currentLevel = (data['level'] as num?)?.toInt();
+      final currentLevel = (data['level'] ?? '').toString();
 
       final payload = <String, dynamic>{
         'totalPoints': sum,
-        'level': computedLevel,
+        'level': levelData.name,
+        'levelNumber': levelData.level,
+        'levelDescription': levelData.description,
         'updatedAt': FieldValue.serverTimestamp(),
         'pointsReconciledAt': FieldValue.serverTimestamp(),
       };
@@ -305,7 +438,7 @@ class GamificationService extends GetxService {
         return;
       }
 
-      if (current != sum || currentLevel != computedLevel) {
+      if (current != sum || currentLevel != levelData.name) {
         tx.update(userRef, payload);
       } else {
         tx.update(userRef, {
@@ -367,9 +500,7 @@ class GamificationService extends GetxService {
     for (final p in storagePaths) {
       try {
         await _storage.ref().child(p).delete();
-      } catch (_) {
-        // Ignore storage cleanup errors.
-      }
+      } catch (_) {}
     }
 
     await userRef.set(
@@ -409,8 +540,7 @@ class GamificationService extends GetxService {
 
     final ext = (photo.name.split('.').lastOrNull ?? '').trim();
     final safeExt = ext.isEmpty ? 'jpg' : ext;
-    final fileName =
-        '${DateTime.now().millisecondsSinceEpoch}.$safeExt';
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.$safeExt';
     final storagePath =
         'users/$userId/challenges/$packageId/$activityId/$fileName';
     final ref = _storage.ref().child(storagePath);
@@ -423,7 +553,7 @@ class GamificationService extends GetxService {
       );
       final url = await ref.getDownloadURL();
 
-      final pointsToAward = 10;
+      const pointsToAward = 10;
 
       return _firestore.runTransaction((tx) async {
         final attemptSnap = await tx.get(attemptRef);
@@ -440,14 +570,17 @@ class GamificationService extends GetxService {
             (userSnap.data() as Map<String, dynamic>?) ?? <String, dynamic>{};
         final currentPoints = (userData['totalPoints'] as num?)?.toInt() ?? 0;
         final newTotalPoints = currentPoints + pointsToAward;
-        final newLevel = (newTotalPoints ~/ 500) + 1;
+
+        final levelData = getLevelFromPoints(newTotalPoints);
 
         if (!userSnap.exists) {
           tx.set(
             userRef,
             {
               'totalPoints': newTotalPoints,
-              'level': newLevel,
+              'level': levelData.name,
+              'levelNumber': levelData.level,
+              'levelDescription': levelData.description,
               'createdAt': FieldValue.serverTimestamp(),
               'updatedAt': FieldValue.serverTimestamp(),
             },
@@ -456,7 +589,9 @@ class GamificationService extends GetxService {
         } else {
           tx.update(userRef, {
             'totalPoints': newTotalPoints,
-            'level': newLevel,
+            'level': levelData.name,
+            'levelNumber': levelData.level,
+            'levelDescription': levelData.description,
             'updatedAt': FieldValue.serverTimestamp(),
           });
         }
@@ -487,9 +622,7 @@ class GamificationService extends GetxService {
     } catch (e) {
       try {
         await ref.delete();
-      } catch (_) {
-        // ignore cleanup errors
-      }
+      } catch (_) {}
       rethrow;
     }
   }
@@ -526,7 +659,8 @@ class GamificationService extends GetxService {
       }
 
       final packageData = packageSnap.data() as Map<String, dynamic>;
-      final activities = (packageData['activities'] as List<dynamic>?) ?? const [];
+      final activities =
+          (packageData['activities'] as List<dynamic>?) ?? const [];
 
       Map<String, dynamic>? activity;
       for (final a in activities) {
@@ -550,12 +684,14 @@ class GamificationService extends GetxService {
 
       String resolvedCorrectAnswer = correctAnswerRaw;
       final correctIndex = int.tryParse(correctAnswerRaw);
-      if (correctIndex != null && correctIndex >= 0 && correctIndex < options.length) {
+      if (correctIndex != null &&
+          correctIndex >= 0 &&
+          correctIndex < options.length) {
         resolvedCorrectAnswer = options[correctIndex];
       }
 
-      final isCorrect = _normalizeAnswer(answer) ==
-          _normalizeAnswer(resolvedCorrectAnswer);
+      final isCorrect =
+          _normalizeAnswer(answer) == _normalizeAnswer(resolvedCorrectAnswer);
 
       final userSnap = await tx.get(userRef);
       final userData =
@@ -564,17 +700,20 @@ class GamificationService extends GetxService {
 
       const basePoints = 2;
       const correctBonusPoints = 8;
-      final pointsEarned = isCorrect ? (basePoints + correctBonusPoints) : basePoints;
+      final pointsEarned =
+          isCorrect ? (basePoints + correctBonusPoints) : basePoints;
       final newTotalPoints = currentPoints + pointsEarned;
 
-      final newLevel = (newTotalPoints ~/ 500) + 1;
+      final levelData = getLevelFromPoints(newTotalPoints);
 
       if (!userSnap.exists) {
         tx.set(
           userRef,
           {
             'totalPoints': newTotalPoints,
-            'level': newLevel,
+            'level': levelData.name,
+            'levelNumber': levelData.level,
+            'levelDescription': levelData.description,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           },
@@ -583,7 +722,9 @@ class GamificationService extends GetxService {
       } else {
         tx.update(userRef, {
           'totalPoints': newTotalPoints,
-          'level': newLevel,
+          'level': levelData.name,
+          'levelNumber': levelData.level,
+          'levelDescription': levelData.description,
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
@@ -602,7 +743,11 @@ class GamificationService extends GetxService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _triggerBadgeCheck(tx: tx, userRef: userRef, totalPoints: newTotalPoints);
+      await _triggerBadgeCheck(
+        tx: tx,
+        userRef: userRef,
+        totalPoints: newTotalPoints,
+      );
 
       return SubmitQuizAnswerResult(
         pointsEarned: pointsEarned,
@@ -612,16 +757,120 @@ class GamificationService extends GetxService {
     });
   }
 
-  Future<void> _triggerBadgeCheck({
-    required Transaction tx,
-    required DocumentReference<Map<String, dynamic>> userRef,
-    required int totalPoints,
-  }) async {
-    // Hook for future badge logic.
-    // Intentionally no-op for now.
+ Future<void> _triggerBadgeCheck({
+  required Transaction tx,
+  required DocumentReference<Map<String, dynamic>> userRef,
+  required int totalPoints,
+}) async {
+  final updatedBadges = <String>{};
+
+  if (totalPoints >= 100) {
+    updatedBadges.add('points_100');
   }
+
+  if (totalPoints >= 250) {
+    updatedBadges.add('points_250');
+  }
+
+  if (totalPoints >= 500) {
+    updatedBadges.add('points_500');
+  }
+
+  final badgesList = updatedBadges.toList();
+
+  tx.set(
+    userRef,
+    {
+      'badges': badgesList,
+      'badgesCount': badgesList.length,
+      'updatedAt': FieldValue.serverTimestamp(),
+    },
+    SetOptions(merge: true),
+  );
 }
 
+Future<void> refreshBadgesForCurrentUser() async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId == null) return;
+
+  print('BADGES: function started');
+
+  final userRef =
+      FirebaseFirestore.instance.collection('users').doc(userId);
+
+  int completedTours = 0;
+  int reviewsCount = 0;
+  int savedToursCount = 0;
+
+  final userSnap = await userRef.get();
+  final userData = userSnap.data() ?? <String, dynamic>{};
+  final totalPoints = (userData['totalPoints'] as num?)?.toInt() ?? 0;
+
+  final pointsEventsSnap =
+      await userRef.collection('points_events').get();
+
+  for (final doc in pointsEventsSnap.docs) {
+    final data = doc.data();
+    final type = (data['type'] ?? '').toString();
+
+    if (type == 'tour_completion') completedTours++;
+    if (type == 'rating') reviewsCount++;
+    if (type == 'save') savedToursCount++;
+  }
+
+  print('completedTours = $completedTours');
+  print('reviewsCount = $reviewsCount');
+  print('savedToursCount = $savedToursCount');
+  print('totalPoints = $totalPoints');
+
+  final updatedBadges = <String>{};
+
+  if (completedTours >= 1) {
+    updatedBadges.add('first_explorer');
+  }
+
+  if (completedTours >= 10) {
+    updatedBadges.add('tour_master');
+  }
+
+  if (reviewsCount >= 20) {
+    updatedBadges.add('review_expert');
+  }
+
+  if (savedToursCount >= 5) {
+    updatedBadges.add('adventure_seeker');
+  }
+
+  if (completedTours >= 3) {
+    updatedBadges.add('goal_getter');
+  }
+
+  if (totalPoints >= 100) {
+    updatedBadges.add('points_100');
+  }
+
+  if (totalPoints >= 250) {
+    updatedBadges.add('points_250');
+  }
+
+  if (totalPoints >= 500) {
+    updatedBadges.add('points_500');
+  }
+
+  final badgesList = updatedBadges.toList();
+
+  print('badgesList = $badgesList');
+
+  await userRef.set(
+    {
+      'badges': badgesList,
+      'badgesCount': badgesList.length,
+      'updatedAt': FieldValue.serverTimestamp(),
+    },
+    SetOptions(merge: true),
+  );
+}
+}
 extension _ListLastOrNull<T> on List<T> {
   T? get lastOrNull => isEmpty ? null : last;
 }

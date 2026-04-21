@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -11,6 +10,9 @@ import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/profile_dropdown.dart';
+import 'package:tour_app/view/main/tourist/home/views/about_us_view.dart';
+import 'package:tour_app/view/main/tourist/home/views/privacy_policy_view.dart';
+import 'package:tour_app/view/main/tourist/home/views/support_view.dart';
 
 class TouristHomeView extends StatelessWidget {
   const TouristHomeView({super.key});
@@ -32,88 +34,76 @@ class TouristHomeView extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 40.w,
-                    height: 40.h,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(6.w),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.emoji_events,
-                                size: 12.sp,
-                                color: const Color(0xFF4CAF50),
-                              ),
-                              SizedBox(width: 2.w),
-                              Icon(
-                                Icons.explore,
-                                size: 12.sp,
-                                color: const Color(0xFF4CAF50),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 2.h),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.park,
-                                size: 12.sp,
-                                color: const Color(0xFF4CAF50),
-                              ),
-                              SizedBox(width: 2.w),
-                              Icon(
-                                Icons.extension,
-                                size: 12.sp,
-                                color: const Color(0xFF4CAF50),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  PopupMenuButton<String>(
+  color: Colors.white,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12.r),
+  ),
+  offset: Offset(0, 45.h),
+  onSelected: (value) {
+    if (value == 'about') {
+      Get.to(() => const AboutUsView());
+    } else if (value == 'privacy') {
+      Get.to(() => const PrivacyPolicyView());
+    } else if (value == 'support') {
+      Get.to(() => const SupportView());
+    }
+  },
+  itemBuilder: (context) => [
+    PopupMenuItem(
+      value: 'about',
+      child: Row(
+        children: [
+          Icon(Icons.info_outline),
+          SizedBox(width: 8.w),
+          Text('About Us'),
+        ],
+      ),
+    ),
+    PopupMenuItem(
+      value: 'privacy',
+      child: Row(
+        children: [
+          Icon(Icons.privacy_tip_outlined),
+          SizedBox(width: 8.w),
+          Text('Privacy Policy'),
+        ],
+      ),
+    ),
+    PopupMenuItem(
+      value: 'support',
+      child: Row(
+        children: [
+          Icon(Icons.support_agent),
+          SizedBox(width: 8.w),
+          Text('Support'),
+        ],
+      ),
+    ),
+  ],
+  child: Container(
+    width: 40.w,
+    height: 40.h,
+    decoration: BoxDecoration(
+      color: const Color(0xFFE8F5E9),
+      borderRadius: BorderRadius.circular(8.r),
+    ),
+    child: Icon(
+      Icons.menu,
+      color: const Color(0xFF4CAF50),
+    ),
+  ),
+),
                   Row(
                     children: [
-                      Container(
-                        height: 40.h,
-                        padding: EdgeInsets.symmetric(horizontal: 12.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.language,
-                              color: Colors.black,
-                              size: 18.sp,
-                            ),
-                            SizedBox(width: 6.w),
-                            Text(
-                              'AR',
-                              style: GoogleFonts.inter(
-                                color: Colors.black,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    
                       SizedBox(width: 12.w),
                       Stack(
                         children: [
                           Container(
                             width: 40.w,
                             height: 40.h,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
@@ -153,12 +143,14 @@ class TouristHomeView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Hi User, ready to explore?',
-                            style: GoogleFonts.inter(
-                              color: Colors.black,
-                              fontSize: 24.sp,
-                              fontWeight: FontWeight.bold,
+                          Obx(
+                            () => Text(
+                              'Hi ${controller.userName.value.split(' ').first}, ready to explore?',
+                              style: GoogleFonts.inter(
+                                color: Colors.black,
+                                fontSize: 24.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           SizedBox(height: 8.h),
@@ -173,7 +165,6 @@ class TouristHomeView extends StatelessWidget {
                         ],
                       ),
                     ),
-                   
                     SizedBox(height: 20.h),
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: 18.w),
@@ -223,12 +214,14 @@ class TouristHomeView extends StatelessWidget {
                                         child: Padding(
                                           padding: EdgeInsets.only(right: 110.w),
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 'Your Total Points',
                                                 style: GoogleFonts.inter(
-                                                  color: Colors.white.withOpacity(0.9),
+                                                  color:
+                                                      Colors.white.withOpacity(0.9),
                                                   fontSize: 14.sp,
                                                   fontWeight: FontWeight.w400,
                                                 ),
@@ -248,7 +241,8 @@ class TouristHomeView extends StatelessWidget {
                                               Wrap(
                                                 spacing: 12.w,
                                                 runSpacing: 6.h,
-                                                crossAxisAlignment: WrapCrossAlignment.center,
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
                                                 children: [
                                                   Container(
                                                     padding: EdgeInsets.symmetric(
@@ -256,18 +250,24 @@ class TouristHomeView extends StatelessWidget {
                                                       vertical: 6.h,
                                                     ),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.white.withOpacity(0.2),
-                                                      borderRadius: BorderRadius.circular(
+                                                      color: Colors.white
+                                                          .withOpacity(0.2),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
                                                         20.r,
                                                       ),
                                                     ),
                                                     child: ConstrainedBox(
-                                                      constraints: BoxConstraints(maxWidth: 135.w),
+                                                      constraints: BoxConstraints(
+                                                        maxWidth: 135.w,
+                                                      ),
                                                       child: FittedBox(
                                                         fit: BoxFit.scaleDown,
-                                                        alignment: Alignment.centerLeft,
+                                                        alignment: Alignment
+                                                            .centerLeft,
                                                         child: Row(
-                                                          mainAxisSize: MainAxisSize.min,
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
                                                           children: [
                                                             Icon(
                                                               Icons.star,
@@ -277,11 +277,18 @@ class TouristHomeView extends StatelessWidget {
                                                             SizedBox(width: 6.w),
                                                             Obx(
                                                               () => Text(
-                                                                controller.level.value,
-                                                                style: GoogleFonts.inter(
-                                                                  color: Colors.white,
-                                                                  fontSize: 10.sp,
-                                                                  fontWeight: FontWeight.w600,
+                                                                controller
+                                                                    .level.value,
+                                                                style:
+                                                                    GoogleFonts
+                                                                        .inter(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize:
+                                                                      10.sp,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
                                                                 ),
                                                               ),
                                                             ),
@@ -292,33 +299,41 @@ class TouristHomeView extends StatelessWidget {
                                                   ),
                                                   FittedBox(
                                                     fit: BoxFit.scaleDown,
-                                                    alignment: Alignment.centerLeft,
+                                                    alignment:
+                                                        Alignment.centerLeft,
                                                     child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
                                                       children: [
                                                         Icon(
-                                                          Icons.workspace_premium,
-                                                          color: Colors.amber[300],
+                                                          Icons
+                                                              .workspace_premium,
+                                                          color:
+                                                              Colors.amber[300],
                                                           size: 16.sp,
                                                         ),
                                                         SizedBox(width: 4.w),
                                                         Obx(
                                                           () => Text(
                                                             '${controller.badgesCount.value}',
-                                                            style: GoogleFonts.inter(
+                                                            style: GoogleFonts
+                                                                .inter(
                                                               color: Colors.white,
                                                               fontSize: 14.sp,
-                                                              fontWeight: FontWeight.w600,
+                                                              fontWeight:
+                                                                  FontWeight.w600,
                                                             ),
                                                           ),
                                                         ),
                                                         SizedBox(width: 4.w),
                                                         Text(
                                                           'Badges',
-                                                          style: GoogleFonts.inter(
+                                                          style: GoogleFonts
+                                                              .inter(
                                                             color: Colors.white,
                                                             fontSize: 14.sp,
-                                                            fontWeight: FontWeight.w400,
+                                                            fontWeight:
+                                                                FontWeight.w400,
                                                           ),
                                                         ),
                                                       ],
@@ -344,24 +359,29 @@ class TouristHomeView extends StatelessWidget {
                                         ),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(18.r),
+                                          borderRadius:
+                                              BorderRadius.circular(18.r),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.1),
+                                              color:
+                                                  Colors.black.withOpacity(0.1),
                                               blurRadius: 10,
                                               offset: const Offset(0, 6),
                                             ),
                                           ],
                                         ),
                                         child: ConstrainedBox(
-                                          constraints: BoxConstraints(maxWidth: 105.w),
+                                          constraints: BoxConstraints(
+                                            maxWidth: 105.w,
+                                          ),
                                           child: FittedBox(
                                             fit: BoxFit.scaleDown,
                                             alignment: Alignment.center,
                                             child: Text(
                                               'View Rewards',
                                               style: GoogleFonts.inter(
-                                                color: const Color(0xFFFF9800),
+                                                color:
+                                                    const Color(0xFFFF9800),
                                                 fontSize: 10.sp,
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -585,15 +605,18 @@ class TouristHomeView extends StatelessWidget {
                                                   style: GoogleFonts.inter(
                                                     fontSize: 14.sp,
                                                     fontWeight: FontWeight.w700,
-                                                    color: const Color(0xFF00A86B),
+                                                    color:
+                                                        const Color(0xFF00A86B),
                                                   ),
                                                 ),
                                                 SizedBox(width: 8.w),
                                                 Icon(
                                                   isExpanded
                                                       ? Icons.keyboard_arrow_up
-                                                      : Icons.keyboard_arrow_down,
-                                                  color: const Color(0xFF00A86B),
+                                                      : Icons
+                                                          .keyboard_arrow_down,
+                                                  color:
+                                                      const Color(0xFF00A86B),
                                                 ),
                                               ],
                                             ),
@@ -602,11 +625,12 @@ class TouristHomeView extends StatelessWidget {
                                         if (isExpanded) ...[
                                           SizedBox(height: 16.h),
                                           Obx(() {
-                                            final mapController =
-                                                controller.mapControllerForTour(tourId);
-                                            final tourMarkers =
-                                                controller.activityMapMarkersByTourId[tourId] ??
-                                                    const <Map<String, dynamic>>[];
+                                            final mapController = controller
+                                                .mapControllerForTour(tourId);
+                                            final tourMarkers = controller
+                                                    .activityMapMarkersByTourId[
+                                                tourId] ??
+                                                const <Map<String, dynamic>>[];
 
                                             if (tourMarkers.isNotEmpty &&
                                                 !controller.autoFittedTourIds
@@ -711,16 +735,20 @@ class TouristHomeView extends StatelessWidget {
                                                 child: FlutterMap(
                                                   mapController: mapController,
                                                   options: MapOptions(
-                                                    initialCenter:
-                                                        controller.mapCenterByTourId[tourId] ??
-                                                            controller.mapCenter.value,
+                                                    initialCenter: controller
+                                                            .mapCenterByTourId[
+                                                        tourId] ??
+                                                        controller
+                                                            .mapCenter.value,
                                                     initialZoom: 12,
                                                     interactionOptions:
                                                         const InteractionOptions(
-                                                      flags: InteractiveFlag.all,
+                                                      flags:
+                                                          InteractiveFlag.all,
                                                     ),
                                                     onTap: (_, point) {
-                                                      mapController.move(point, 13);
+                                                      mapController.move(
+                                                          point, 13);
                                                     },
                                                   ),
                                                   children: [
@@ -734,21 +762,23 @@ class TouristHomeView extends StatelessWidget {
                                                       markers: tourMarkers
                                                           .map(
                                                             (m) => Marker(
-                                                              point:
-                                                                  (m['position']
-                                                                      as LatLng),
+                                                              point: (m[
+                                                                  'position']
+                                                                  as LatLng),
                                                               width: 140.w,
                                                               height: 60.h,
                                                               child:
                                                                   GestureDetector(
                                                                 onTap: () {
-                                                                  controller.activeTourId.value =
-                                                                        tourId;
+                                                                  controller
+                                                                      .activeTourId
+                                                                      .value = tourId;
                                                                   final p = m[
                                                                           'position']
                                                                       as LatLng;
-                                                                  mapController.move(
-                                                                      p, 14);
+                                                                  mapController
+                                                                      .move(
+                                                                          p, 14);
 
                                                                   final quizTitle =
                                                                       (m['title']
@@ -764,9 +794,9 @@ class TouristHomeView extends StatelessWidget {
                                                                           '';
                                                                   final options =
                                                                       (m['options']
-                                                                              as List?)
-                                                                              ?.map((e) =>
-                                                                                  e.toString())
+                                                                                  as List?)
+                                                                              ?.map((e) => e
+                                                                                  .toString())
                                                                               .toList() ??
                                                                           <String>[];
 
@@ -779,70 +809,82 @@ class TouristHomeView extends StatelessWidget {
                                                                     Get.snackbar(
                                                                       'No Quiz',
                                                                       'This activity has no quiz yet',
-                                                                      snackPosition: SnackPosition.BOTTOM,
+                                                                      snackPosition:
+                                                                          SnackPosition
+                                                                              .BOTTOM,
                                                                     );
                                                                     return;
                                                                   }
 
                                                                   final activities =
-                                                                      controller.tourActivitiesByTourId[tourId] ??
-                                                                          const <Map<String, dynamic>>[];
-                                                                  final idx = activities.indexWhere(
+                                                                      controller.tourActivitiesByTourId[
+                                                                              tourId] ??
+                                                                          const <Map<String,
+                                                                              dynamic>>[];
+                                                                  final idx = activities
+                                                                      .indexWhere(
                                                                     (a) =>
-                                                                        (a['activityId'] ?? '')
+                                                                        (a['activityId'] ??
+                                                                                '')
                                                                             .toString() ==
                                                                         activityId,
                                                                   );
                                                                   if (idx >= 0) {
-                                                                    controller.setSelectedActivityIndexForTour(
+                                                                    controller
+                                                                        .setSelectedActivityIndexForTour(
                                                                       tourId,
                                                                       idx,
                                                                     );
                                                                   }
 
                                                                   showDialog<void>(
-                                                                    context: context,
+                                                                    context:
+                                                                        context,
                                                                     barrierDismissible:
                                                                         false,
-                                                                    builder: (_) =>
-                                                                        _QuizDialog(
-                                                                      packageId: tourId,
-                                                                      activityId: activityId,
+                                                                    builder:
+                                                                        (_) =>
+                                                                            _QuizDialog(
+                                                                      packageId:
+                                                                          tourId,
+                                                                      activityId:
+                                                                          activityId,
                                                                       photoChallengeEnabled:
-                                                                          (m['photoChallengeEnabled']
-                                                                                  as bool?) ??
+                                                                          (m['photoChallengeEnabled'] as bool?) ??
                                                                               false,
                                                                       photoChallengeText:
-                                                                          (m['photoChallengeText']
-                                                                                  as String?) ??
+                                                                          (m['photoChallengeText'] as String?) ??
                                                                               '',
-                                                                      title: quizTitle,
+                                                                      title:
+                                                                          quizTitle,
                                                                       question:
                                                                           question,
                                                                       options:
                                                                           options,
                                                                       onSubmit:
                                                                           (selectedAnswer) async {
-                                                                        final service = Get.find<
-                                                                            GamificationService>();
-                                                                        final result = await service
-                                                                            .submitQuizAnswer(
-                                                                          packageId: tourId,
+                                                                        final service =
+                                                                            Get.find<GamificationService>();
+                                                                        final result =
+                                                                            await service.submitQuizAnswer(
+                                                                          packageId:
+                                                                              tourId,
                                                                           activityId:
                                                                               activityId,
                                                                           answer:
                                                                               selectedAnswer,
                                                                         );
 
-                                                                        await controller.loadCurrentTours();
+                                                                        await controller
+                                                                            .loadCurrentTours();
                                                                         return result;
                                                                       },
                                                                     ),
                                                                   );
                                                                 },
                                                                 child: _MapMarker(
-                                                                  label: (m['title']
-                                                                      as String),
+                                                                  label: (m[
+                                                                      'title'] as String),
                                                                   isCompleted:
                                                                       (m['isCompleted']
                                                                               as bool?) ??
@@ -887,8 +929,10 @@ class TouristHomeView extends StatelessWidget {
                                                         'Complete each activity to earn points and unlock rewards!',
                                                         style: GoogleFonts.inter(
                                                           fontSize: 12.sp,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF6B6B6B),
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color:
+                                                              const Color(0xFF6B6B6B),
                                                         ),
                                                       ),
                                                     ),
@@ -896,59 +940,81 @@ class TouristHomeView extends StatelessWidget {
                                                       '$completedActivities/$totalActivities completed',
                                                       style: GoogleFonts.inter(
                                                         fontSize: 12.sp,
-                                                        fontWeight: FontWeight.w700,
-                                                        color: const Color(0xFF00A86B),
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color:
+                                                            const Color(0xFF00A86B),
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                                 SizedBox(height: 10.h),
                                                 ClipRRect(
-                                                  borderRadius: BorderRadius.circular(8.r),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8.r),
                                                   child: LinearProgressIndicator(
                                                     value: totalActivities == 0
                                                         ? 0
-                                                        : (completedActivities / totalActivities)
+                                                        : (completedActivities /
+                                                                totalActivities)
                                                             .clamp(0.0, 1.0),
                                                     minHeight: 8.h,
-                                                    backgroundColor: const Color(0xFFE2E8E4),
-                                                    valueColor: const AlwaysStoppedAnimation(
+                                                    backgroundColor:
+                                                        const Color(0xFFE2E8E4),
+                                                    valueColor:
+                                                        const AlwaysStoppedAnimation(
                                                       Color(0xFF00A86B),
                                                     ),
                                                   ),
                                                 ),
                                                 SizedBox(height: 16.h),
                                                 Obx(() {
-                                                  final mapController =
-                                                      controller.mapControllerForTour(tourId);
+                                                  final mapController = controller
+                                                      .mapControllerForTour(
+                                                          tourId);
                                                   final activities =
-                                                      controller.tourActivitiesByTourId[tourId] ??
-                                                          const <Map<String, dynamic>>[];
+                                                      controller.tourActivitiesByTourId[
+                                                              tourId] ??
+                                                          const <Map<String,
+                                                              dynamic>>[];
                                                   if (activities.isEmpty) {
                                                     return const SizedBox();
                                                   }
 
                                                   final selectedIndex =
-                                                      controller.selectedActivityIndexByTourId[tourId] ??
-                                                          controller.selectedActivityIndex.value;
+                                                      controller.selectedActivityIndexByTourId[
+                                                              tourId] ??
+                                                          controller
+                                                              .selectedActivityIndex
+                                                              .value;
 
                                                   return _TourActivitiesTimeline(
                                                     selectedIndex: selectedIndex,
                                                     activities: activities,
                                                     onSelect: (index, a) {
-                                                      controller.setSelectedActivityIndexForTour(
+                                                      controller
+                                                          .setSelectedActivityIndexForTour(
                                                         tourId,
                                                         index,
                                                       );
 
-                                                      final lat = (a['latitude'] as num?)?.toDouble();
-                                                      final lng = (a['longitude'] as num?)?.toDouble();
-                                                      if (lat != null && lng != null) {
-                                                        mapController.move(LatLng(lat, lng), 14);
+                                                      final lat =
+                                                          (a['latitude'] as num?)
+                                                              ?.toDouble();
+                                                      final lng =
+                                                          (a['longitude']
+                                                                  as num?)
+                                                              ?.toDouble();
+                                                      if (lat != null &&
+                                                          lng != null) {
+                                                        mapController.move(
+                                                            LatLng(lat, lng),
+                                                            14);
                                                       }
                                                     },
                                                     onOpenQuiz: (a) {
-                                                      controller.activeTourId.value = tourId;
+                                                      controller.activeTourId
+                                                          .value = tourId;
                                                       final activityId =
                                                           (a['activityId'] ?? '')
                                                               .toString();
@@ -960,23 +1026,28 @@ class TouristHomeView extends StatelessWidget {
                                                               .toString();
                                                       final options =
                                                           (a['options'] as List?)
-                                                                  ?.map((e) =>
-                                                                      e.toString())
+                                                                  ?.map((e) => e
+                                                                      .toString())
                                                                   .toList() ??
                                                               <String>[];
 
                                                       if (activityId.isEmpty ||
-                                                          question.trim().isEmpty ||
+                                                          question
+                                                              .trim()
+                                                              .isEmpty ||
                                                           options.isEmpty) {
                                                         return;
                                                       }
 
                                                       showDialog<void>(
                                                         context: context,
-                                                        barrierDismissible: false,
-                                                        builder: (_) => _QuizDialog(
+                                                        barrierDismissible:
+                                                            false,
+                                                        builder: (_) =>
+                                                            _QuizDialog(
                                                           packageId: tourId,
-                                                          activityId: activityId,
+                                                          activityId:
+                                                              activityId,
                                                           photoChallengeEnabled:
                                                               (a['photoChallengeEnabled']
                                                                       as bool?) ??
@@ -988,15 +1059,23 @@ class TouristHomeView extends StatelessWidget {
                                                           title: activityTitle,
                                                           question: question,
                                                           options: options,
-                                                          onSubmit: (selectedAnswer) async {
-                                                            final service = Get.find<GamificationService>();
-                                                            final result = await service.submitQuizAnswer(
+                                                          onSubmit:
+                                                              (selectedAnswer) async {
+                                                            final service = Get
+                                                                .find<
+                                                                    GamificationService>();
+                                                            final result =
+                                                                await service
+                                                                    .submitQuizAnswer(
                                                               packageId: tourId,
-                                                              activityId: activityId,
-                                                              answer: selectedAnswer,
+                                                              activityId:
+                                                                  activityId,
+                                                              answer:
+                                                                  selectedAnswer,
                                                             );
 
-                                                            await controller.loadCurrentTours();
+                                                            await controller
+                                                                .loadCurrentTours();
                                                             return result;
                                                           },
                                                         ),
@@ -1012,7 +1091,8 @@ class TouristHomeView extends StatelessWidget {
                                                   decoration: BoxDecoration(
                                                     color: Colors.white,
                                                     borderRadius:
-                                                        BorderRadius.circular(16.r),
+                                                        BorderRadius.circular(
+                                                            16.r),
                                                     boxShadow: [
                                                       BoxShadow(
                                                         color: Colors.black
@@ -1030,19 +1110,29 @@ class TouristHomeView extends StatelessWidget {
                                                           children: [
                                                             Text(
                                                               '$completedActivities',
-                                                              style: GoogleFonts.inter(
+                                                              style: GoogleFonts
+                                                                  .inter(
                                                                 fontSize: 18.sp,
-                                                                fontWeight: FontWeight.w800,
-                                                                color: const Color(0xFF00A86B),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                color:
+                                                                    const Color(
+                                                                        0xFF00A86B),
                                                               ),
                                                             ),
                                                             SizedBox(height: 4.h),
                                                             Text(
                                                               'Completed',
-                                                              style: GoogleFonts.inter(
+                                                              style: GoogleFonts
+                                                                  .inter(
                                                                 fontSize: 12.sp,
-                                                                color: const Color(0xFF6B6B6B),
-                                                                fontWeight: FontWeight.w500,
+                                                                color:
+                                                                    const Color(
+                                                                        0xFF6B6B6B),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
                                                               ),
                                                             ),
                                                           ],
@@ -1051,26 +1141,37 @@ class TouristHomeView extends StatelessWidget {
                                                       Container(
                                                         width: 1,
                                                         height: 34.h,
-                                                        color: const Color(0xFFE0E0E0),
+                                                        color: const Color(
+                                                            0xFFE0E0E0),
                                                       ),
                                                       Expanded(
                                                         child: Column(
                                                           children: [
                                                             Text(
                                                               '${(totalActivities - completedActivities).clamp(0, totalActivities)}',
-                                                              style: GoogleFonts.inter(
+                                                              style: GoogleFonts
+                                                                  .inter(
                                                                 fontSize: 18.sp,
-                                                                fontWeight: FontWeight.w800,
-                                                                color: const Color(0xFFFF9800),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                color:
+                                                                    const Color(
+                                                                        0xFFFF9800),
                                                               ),
                                                             ),
                                                             SizedBox(height: 4.h),
                                                             Text(
                                                               'Remaining',
-                                                              style: GoogleFonts.inter(
+                                                              style: GoogleFonts
+                                                                  .inter(
                                                                 fontSize: 12.sp,
-                                                                color: const Color(0xFF6B6B6B),
-                                                                fontWeight: FontWeight.w500,
+                                                                color:
+                                                                    const Color(
+                                                                        0xFF6B6B6B),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
                                                               ),
                                                             ),
                                                           ],
@@ -1079,26 +1180,37 @@ class TouristHomeView extends StatelessWidget {
                                                       Container(
                                                         width: 1,
                                                         height: 34.h,
-                                                        color: const Color(0xFFE0E0E0),
+                                                        color: const Color(
+                                                            0xFFE0E0E0),
                                                       ),
                                                       Expanded(
                                                         child: Column(
                                                           children: [
                                                             Text(
                                                               '$pointsEarned',
-                                                              style: GoogleFonts.inter(
+                                                              style: GoogleFonts
+                                                                  .inter(
                                                                 fontSize: 18.sp,
-                                                                fontWeight: FontWeight.w800,
-                                                                color: const Color(0xFF1976D2),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                color:
+                                                                    const Color(
+                                                                        0xFF1976D2),
                                                               ),
                                                             ),
                                                             SizedBox(height: 4.h),
                                                             Text(
                                                               'Points Earned',
-                                                              style: GoogleFonts.inter(
+                                                              style: GoogleFonts
+                                                                  .inter(
                                                                 fontSize: 12.sp,
-                                                                color: const Color(0xFF6B6B6B),
-                                                                fontWeight: FontWeight.w500,
+                                                                color:
+                                                                    const Color(
+                                                                        0xFF6B6B6B),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
                                                               ),
                                                             ),
                                                           ],
@@ -1109,38 +1221,52 @@ class TouristHomeView extends StatelessWidget {
                                                 ),
                                                 SizedBox(height: 16.h),
                                                 Obx(() {
-                                                  final ended =
-                                                      controller.tourEndedByTourId[tourId] ?? false;
-                                                  if (!ended) return const SizedBox.shrink();
+                                                  final ended = controller
+                                                          .tourEndedByTourId[
+                                                      tourId] ??
+                                                      false;
+                                                  if (!ended) {
+                                                    return const SizedBox
+                                                        .shrink();
+                                                  }
                                                   return Container(
                                                     width: double.infinity,
-                                                    padding: EdgeInsets.symmetric(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
                                                       vertical: 12.h,
                                                       horizontal: 14.w,
                                                     ),
                                                     decoration: BoxDecoration(
-                                                      color: const Color(0xFFFFE0E0),
+                                                      color:
+                                                          const Color(0xFFFFE0E0),
                                                       borderRadius:
-                                                          BorderRadius.circular(14.r),
+                                                          BorderRadius.circular(
+                                                              14.r),
                                                       border: Border.all(
-                                                        color: const Color(0xFFD32F2F),
+                                                        color: const Color(
+                                                            0xFFD32F2F),
                                                       ),
                                                     ),
                                                     child: Row(
                                                       children: [
                                                         Icon(
                                                           Icons.stop_circle,
-                                                          color: const Color(0xFFD32F2F),
+                                                          color: const Color(
+                                                              0xFFD32F2F),
                                                           size: 18.sp,
                                                         ),
                                                         SizedBox(width: 10.w),
                                                         Expanded(
                                                           child: Text(
                                                             'This tour has ended by the guide',
-                                                            style: GoogleFonts.inter(
-                                                              color: const Color(0xFFD32F2F),
+                                                            style: GoogleFonts
+                                                                .inter(
+                                                              color: const Color(
+                                                                  0xFFD32F2F),
                                                               fontSize: 12.sp,
-                                                              fontWeight: FontWeight.w700,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
                                                             ),
                                                           ),
                                                         ),
@@ -1149,12 +1275,17 @@ class TouristHomeView extends StatelessWidget {
                                                   );
                                                 }),
                                                 Obx(() {
-                                                  final ended =
-                                                      controller.tourEndedByTourId[tourId] ?? false;
-                                                  final rated =
-                                                      controller.ratedByTourId[tourId] ?? false;
+                                                  final ended = controller
+                                                          .tourEndedByTourId[
+                                                      tourId] ??
+                                                      false;
+                                                  final rated = controller
+                                                          .ratedByTourId[
+                                                      tourId] ??
+                                                      false;
                                                   if (!ended || rated) {
-                                                    return const SizedBox.shrink();
+                                                    return const SizedBox
+                                                        .shrink();
                                                   }
 
                                                   return Column(
@@ -1164,28 +1295,39 @@ class TouristHomeView extends StatelessWidget {
                                                         width: double.infinity,
                                                         height: 46.h,
                                                         child: ElevatedButton(
-                                                          style: ElevatedButton.styleFrom(
+                                                          style: ElevatedButton
+                                                              .styleFrom(
                                                             backgroundColor:
-                                                                const Color(0xFF00A86B),
-                                                            shape: RoundedRectangleBorder(
+                                                                const Color(
+                                                                    0xFF00A86B),
+                                                            shape:
+                                                                RoundedRectangleBorder(
                                                               borderRadius:
-                                                                  BorderRadius.circular(14.r),
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          14.r),
                                                             ),
                                                           ),
                                                           onPressed: () async {
-                                                            await Get.dialog<void>(
+                                                            await Get.dialog<
+                                                                void>(
                                                               _RateTourDialog(
                                                                 tourId: tourId,
                                                               ),
-                                                              barrierDismissible: true,
+                                                              barrierDismissible:
+                                                                  true,
                                                             );
                                                           },
                                                           child: Text(
                                                             'Rate Tour',
-                                                            style: GoogleFonts.inter(
-                                                              color: Colors.white,
+                                                            style: GoogleFonts
+                                                                .inter(
+                                                              color:
+                                                                  Colors.white,
                                                               fontSize: 14.sp,
-                                                              fontWeight: FontWeight.w800,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800,
                                                             ),
                                                           ),
                                                         ),
@@ -1209,7 +1351,6 @@ class TouristHomeView extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 24.h),
-
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),
                       child: Column(
@@ -1225,192 +1366,72 @@ class TouristHomeView extends StatelessWidget {
                           ),
                           SizedBox(height: 12.h),
                           Obx(() {
-
-        if (controller.recommendedTours.isEmpty) {
-          return const SizedBox();
-        }
+                            if (controller.recommendedTours.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
                             return Column(
                               children: controller.recommendedTours.map((tour) {
-
-            return Container(
-              margin: EdgeInsets.only(bottom: 12.h),
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Row(
-                children: [
-
-                  Icon(
-                    Icons.explore,
-                    color: const Color(0xFF00A86B),
-                    size: 24.sp,
-                  ),
-
-                  SizedBox(width: 12.w),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-
-                        Text(
-                          tour['tourTitle'] ?? '',
-                          style: GoogleFonts.inter(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-
-                        SizedBox(height: 4.h),
-
-                        Text(
-                          tour['destination'] ?? '',
-                          style: GoogleFonts.inter(
-                            fontSize: 14.sp,
-                            color: const Color(0xFF666666),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Text(
-                    '${tour['price']} SAR',
-                    style: GoogleFonts.inter(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-
-                ],
-              ),
-            );
-
+                                return Container(
+                                  margin: EdgeInsets.only(bottom: 12.h),
+                                  padding: EdgeInsets.all(16.w),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.explore,
+                                        color: const Color(0xFF00A86B),
+                                        size: 24.sp,
+                                      ),
+                                      SizedBox(width: 12.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              tour['tourTitle'] ?? '',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16.sp,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4.h),
+                                            Text(
+                                              tour['destination'] ?? '',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14.sp,
+                                                color:
+                                                    const Color(0xFF666666),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Text(
+                                        '${tour['price']} SAR',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
                               }).toList(),
                             );
                           }),
+                          SizedBox(height: 8.h),
                         ],
                       ),
                     ),
-                    SizedBox(height: 24.h),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 18.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Quick Actions',
-                            style: GoogleFonts.inter(
-                              color: Colors.black,
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 16.h),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: controller.viewMyRewards,
-                                  child: Container(
-                                    padding: EdgeInsets.all(20.w),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFFF9C4),
-                                      borderRadius: BorderRadius.circular(12.r),
-                                      border: Border.all(
-                                        color: const Color(0xFFFF9800),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.emoji_events,
-                                          color: const Color(0xFFFF9800),
-                                          size: 32.sp,
-                                        ),
-                                        SizedBox(height: 12.h),
-                                        Text(
-                                          'My Rewards',
-                                          style: GoogleFonts.inter(
-                                            color: Colors.black,
-                                            fontSize: 16.sp,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4.h),
-                                        Obx(
-                                          () => Text(
-                                            '${controller.rewardsPoints} points',
-                                            style: GoogleFonts.inter(
-                                              color: const Color(0xFF666666),
-                                              fontSize: 14.sp,
-                                              fontWeight: FontWeight.w400,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 12.w),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: controller.openSettings,
-                                  child: Container(
-                                    padding: EdgeInsets.all(20.w),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE3F2FD),
-                                      borderRadius: BorderRadius.circular(12.r),
-                                      border: Border.all(
-                                        color: const Color(0xFF2196F3),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.settings,
-                                          color: const Color(0xFF2196F3),
-                                          size: 32.sp,
-                                        ),
-                                        SizedBox(height: 12.h),
-                                        Text(
-                                          'Settings',
-                                          style: GoogleFonts.inter(
-                                            color: Colors.black,
-                                            fontSize: 16.sp,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4.h),
-                                        Text(
-                                          'Manage profile',
-                                          style: GoogleFonts.inter(
-                                            color: const Color(0xFF666666),
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 24.h),
                   ],
                 ),
               ),
             ),
-            TouristBottomNavigationBar(),
+            const TouristBottomNavigationBar(),
           ],
         ),
       ),
@@ -1468,7 +1489,7 @@ class _QuizWrongDialog extends StatelessWidget {
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  'إغلاق',
+                  'Close',
                   style: GoogleFonts.inter(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
@@ -1865,7 +1886,7 @@ class _QuizSuccessDialog extends StatelessWidget {
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  'إغلاق',
+                  'Close',
                   style: GoogleFonts.inter(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
@@ -2242,8 +2263,7 @@ class _QuizDialogState extends State<_QuizDialog> {
                                       final activeTourId =
                                           homeController.activeTourId.value;
                                       if (activeTourId.isNotEmpty) {
-                                        await homeController
-                                            .loadTourActivities(
+                                        await homeController.loadTourActivities(
                                           activeTourId,
                                           showCompletionSnackbars: false,
                                         );
@@ -2266,9 +2286,7 @@ class _QuizDialogState extends State<_QuizDialog> {
                                   if (!context.mounted) return;
                                   Get.snackbar(
                                     'Error',
-                                    e
-                                        .toString()
-                                        .replaceFirst('Exception: ', ''),
+                                    e.toString().replaceFirst('Exception: ', ''),
                                     snackPosition: SnackPosition.BOTTOM,
                                   );
                                 } finally {
@@ -2513,9 +2531,15 @@ class _MapMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pinColor = isCompleted ? const Color(0xFF00A86B) : const Color(0xFFFFB74D);
-    final chipColor = isCompleted ? const Color(0xFFE9F7F1) : const Color(0xFFFFF3E0);
-    final chipTextColor = isCompleted ? const Color(0xFF0B6B48) : const Color(0xFF8D4B00);
+    final pinColor = isCompleted
+        ? const Color(0xFF00A86B)
+        : const Color(0xFFFFB74D);
+    final chipColor = isCompleted
+        ? const Color(0xFFE9F7F1)
+        : const Color(0xFFFFF3E0);
+    final chipTextColor = isCompleted
+        ? const Color(0xFF0B6B48)
+        : const Color(0xFF8D4B00);
 
     return Column(
       mainAxisSize: MainAxisSize.min,

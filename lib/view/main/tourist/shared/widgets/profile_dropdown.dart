@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tour_app/services/auth_service.dart';
+import 'package:tour_app/services/storage_service.dart';
+import 'package:tour_app/view/authentication/views/login_view.dart';
 import 'package:tour_app/view/main/tourist/profile/controllers/profile_controller.dart';
 
 class TouristProfileDropdown extends StatelessWidget {
@@ -9,7 +12,10 @@ class TouristProfileDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(TouristProfileController(), permanent: false);
+    final controller = Get.isRegistered<TouristProfileController>()
+        ? Get.find<TouristProfileController>()
+        : Get.put(TouristProfileController(), permanent: false);
+
     return GestureDetector(
       onTap: () => _showDropdown(context, controller),
       child: Container(
@@ -20,14 +26,22 @@ class TouristProfileDropdown extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Center(
-          child: Text(
-            'U',
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: Obx(() {
+            final fullName =
+                (controller.userData['fullName'] ?? '').toString().trim();
+
+            final firstLetter =
+                fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U';
+
+            return Text(
+              firstLetter,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          }),
         ),
       ),
     );
@@ -49,35 +63,47 @@ class TouristProfileDropdown extends StatelessWidget {
         offset.dx + size.width,
         offset.dy + size.height + 8.h,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+      ),
       color: Colors.white,
       items: [
         PopupMenuItem<String>(
           enabled: false,
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Tourist',
-                style: GoogleFonts.inter(
-                  color: Colors.black,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
+          child: Obx(() {
+            final fullName =
+                (controller.userData['fullName'] ?? 'Tourist').toString().trim();
+
+            final email =
+                (controller.userData['email'] ?? 'tourist@example.com')
+                    .toString()
+                    .trim();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  fullName.isEmpty ? 'Tourist' : fullName,
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                'tourist@example.com',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF666666),
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w400,
+                SizedBox(height: 4.h),
+                Text(
+                  email.isEmpty ? 'tourist@example.com' : email,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF666666),
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          }),
         ),
         PopupMenuDivider(height: 1.h),
         PopupMenuItem<String>(
@@ -117,12 +143,27 @@ class TouristProfileDropdown extends StatelessWidget {
           ),
         ),
       ],
-    ).then((value) {
+    ).then((value) async {
       if (value == 'logout') {
-        controller.logout();
+        await _logoutDirectly();
       } else if (value == 'edit') {
         controller.editProfile();
       }
     });
+  }
+
+  Future<void> _logoutDirectly() async {
+    try {
+      final authService = Get.find<AuthService>();
+      await authService.signOut();
+      await StorageService.clearAll();
+      Get.offAll(() => const LoginView());
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Logout failed',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 }

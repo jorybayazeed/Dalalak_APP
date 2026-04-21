@@ -280,7 +280,9 @@ class AuthService extends GetxService {
       return {'success': false, 'message': 'Invalid verification code'};
     }
   }
-
+Future<void> sendPasswordReset(String email) async {
+  await _auth.sendPasswordResetEmail(email: email);
+}
   Future<void> signOut() async {
     await _auth.signOut();
   }

@@ -28,73 +28,7 @@ class TouristProfileView extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    Container(
-                      margin: EdgeInsets.all(18.w),
-                      padding: EdgeInsets.all(20.w),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16.r),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 80.w,
-                            height: 80.h,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8F5E9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.person,
-                                size: 40.sp,
-                                color: const Color(0xFF00A86B),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 16.w),
-                          Expanded(
-                            child: Obx(
-                              () => Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    controller.userData['fullName'] ?? '',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.black,
-                                      fontSize: 20.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 12.h),
-                                  _buildUserDetailRow(
-                                    icon: Icons.email,
-                                    text: controller.userData['email'] ?? '',
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  _buildUserDetailRow(
-                                    icon: Icons.phone,
-                                    text: controller.userData['phone'] ?? '',
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  _buildUserDetailRow(
-                                    icon: Icons.location_on,
-                                    text: controller.userData['location'] ?? '',
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  _buildUserDetailRow(
-                                    icon: Icons.calendar_today,
-                                    text:
-                                        'Member since ${controller.userData['memberSince'] ?? ''}',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildProfileHeaderCard(controller),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),
                       child: Row(
@@ -187,14 +121,141 @@ class TouristProfileView extends StatelessWidget {
     );
   }
 
+  Widget _buildProfileHeaderCard(TouristProfileController controller) {
+    return Obx(() {
+      final fullName = (controller.userData['fullName'] ?? 'User')
+          .toString()
+          .trim();
+      final email = (controller.userData['email'] ?? '').toString().trim();
+      final phone = (controller.userData['phone'] ?? '').toString().trim();
+      final country =
+          (controller.userData['countryOfResidence'] ?? '').toString().trim();
+
+      final firstLetter =
+          fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U';
+
+      return Container(
+        margin: EdgeInsets.all(18.w),
+        padding: EdgeInsets.all(18.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 60.w,
+                  height: 60.h,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE8F5E9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      firstLetter,
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF00A86B),
+                        fontSize: 22.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fullName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          color: Colors.black,
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 10.h),
+                      if (email.isNotEmpty)
+                        _buildUserDetailRow(
+                          icon: Icons.email_outlined,
+                          text: email,
+                        ),
+                      if (phone.isNotEmpty) ...[
+                        SizedBox(height: 6.h),
+                        _buildUserDetailRow(
+                          icon: Icons.call_outlined,
+                          text: phone,
+                        ),
+                      ],
+                      if (country.isNotEmpty) ...[
+                        SizedBox(height: 6.h),
+                        _buildUserDetailRow(
+                          icon: Icons.location_on_outlined,
+                          text: country,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 14.h),
+            SizedBox(
+              width: double.infinity,
+              height: 48.h,
+              child: ElevatedButton.icon(
+                onPressed: controller.editProfile,
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 18.sp,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  'Edit Profile',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00A86B),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   Widget _buildUserDetailRow({required IconData icon, required String text}) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: const Color(0xFF666666), size: 16.sp),
+        Icon(icon, color: const Color(0xFF666666), size: 17.sp),
         SizedBox(width: 8.w),
         Expanded(
           child: Text(
             text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.inter(
               color: const Color(0xFF666666),
               fontSize: 14.sp,
