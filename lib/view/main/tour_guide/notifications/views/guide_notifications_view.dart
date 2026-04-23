@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:tour_app/view/main/tour_guide/notifications/controllers/notifications_controller.dart';
+import 'package:tour_app/view/main/tour_guide/notifications/controllers/guide_notifications_controller.dart';
 import 'package:tour_app/view/main/tour_guide/shared/widgets/bottom_navigation_bar.dart';
 
 class NotificationsView extends StatelessWidget {

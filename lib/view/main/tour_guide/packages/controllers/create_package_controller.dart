@@ -1123,6 +1123,7 @@ class CreatePackageController extends GetxController {
               ? selectedActivityType.value
               : null,
           activities: activitiesData,
+          isCancelled: false,
         );
         isLoading.value = false;
         Get.snackbar(

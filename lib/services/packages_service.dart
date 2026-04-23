@@ -39,7 +39,8 @@ class PackagesService extends GetxService {
         final currentReviews = (data['reviews'] as num?)?.toInt() ?? 0;
 
         final newReviews = currentReviews + 1;
-        final newAvg = ((currentAvg * currentReviews) + safeRating) / newReviews;
+        final newAvg =
+            ((currentAvg * currentReviews) + safeRating) / newReviews;
 
         tx.set(ratingRef, {
           'userId': userId,
@@ -125,6 +126,7 @@ class PackagesService extends GetxService {
     String? activityType,
     String? availableDates,
     List<Map<String, dynamic>>? activities,
+    bool? isCancelled,
   }) async {
     try {
       final userId = currentUserId;
@@ -146,6 +148,9 @@ class PackagesService extends GetxService {
         'activities': activities ?? [],
         'updatedAt': FieldValue.serverTimestamp(),
       };
+      if (isCancelled != null) {
+        packageData['isCancelled'] = isCancelled;
+      }
 
       await _firestore
           .collection('tourPackages')
@@ -249,28 +254,28 @@ class PackagesService extends GetxService {
   }
 
   Stream<List<Map<String, dynamic>>> getAllPackagesStream() {
-  return _firestore
-      .collection('tourPackages')
-      .where('status', isEqualTo: 'Published')
-      .snapshots()
-      .map((snapshot) {
-        final packages = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {'id': doc.id, ...data};
-        }).toList();
+    return _firestore
+        .collection('tourPackages')
+        .where('status', isEqualTo: 'Published')
+        .snapshots()
+        .map((snapshot) {
+          final packages = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {'id': doc.id, ...data};
+          }).toList();
 
-        packages.sort((a, b) {
-          final aCreated = a['createdAt'] as Timestamp?;
-          final bCreated = b['createdAt'] as Timestamp?;
-          if (aCreated == null && bCreated == null) return 0;
-          if (aCreated == null) return 1;
-          if (bCreated == null) return -1;
-          return bCreated.compareTo(aCreated);
+          packages.sort((a, b) {
+            final aCreated = a['createdAt'] as Timestamp?;
+            final bCreated = b['createdAt'] as Timestamp?;
+            if (aCreated == null && bCreated == null) return 0;
+            if (aCreated == null) return 1;
+            if (bCreated == null) return -1;
+            return bCreated.compareTo(aCreated);
+          });
+
+          return packages;
         });
-
-        return packages;
-      });
-}
+  }
 
   Future<List<Map<String, dynamic>>> getAllPackages() async {
     try {
@@ -299,4 +304,43 @@ class PackagesService extends GetxService {
       return [];
     }
   }
+
+  Future<void> cancelTour(String packageId) async {
+  try {
+    await _firestore.collection('tourPackages').doc(packageId).update({
+      'isCancelled': true,
+      'cancelledAt': FieldValue.serverTimestamp(),
+    });
+    final tourDoc = await _firestore
+    .collection('tourPackages')
+    .doc(packageId)
+    .get();
+
+final tourTitle = tourDoc.data()?['tourTitle'] ?? 'Your tour';
+
+    final bookingsSnapshot = await FirebaseFirestore.instance
+        .collectionGroup('upcomingBookings')
+        .where('tourId', isEqualTo: packageId)
+        .get();
+
+    for (final doc in bookingsSnapshot.docs) {
+
+      await doc.reference.update({
+        'status': 'Cancelled',
+        'cancelledAt': FieldValue.serverTimestamp(),
+      });
+
+      final userRef = doc.reference.parent.parent;
+
+      await userRef!.collection('notifications').add({
+        'title': 'Tour Cancelled',
+        'message': '$tourTitle has been cancelled by the guide',
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    }
+  } catch (e) {
+    throw Exception('Failed to cancel tour: ${e.toString()}');
+  }
+}
 }

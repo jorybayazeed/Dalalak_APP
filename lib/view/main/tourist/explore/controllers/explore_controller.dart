@@ -39,12 +39,15 @@ class ExploreController extends GetxController {
   }
 
   Future<void> _loadToursWithFavorites(List<Map<String, dynamic>> data) async {
+     final filteredData = data
+      .where((tour) => tour['isCancelled'] != true)
+      .toList();
     final user = await _userService.getCurrentUserData();
     final userId = user?['uid'];
 
     if (userId == null || userId.toString().isEmpty) {
       tours.assignAll(
-        data.map((tour) {
+         filteredData.map((tour) {
           final updatedTour = Map<String, dynamic>.from(tour);
           updatedTour['isFavorite'] = false;
           return updatedTour;
@@ -61,7 +64,7 @@ class ExploreController extends GetxController {
 
     final savedIds = savedSnapshot.docs.map((doc) => doc.id).toSet();
 
-    final updatedTours = data.map((tour) {
+    final updatedTours = filteredData.map((tour) {
       final updatedTour = Map<String, dynamic>.from(tour);
       updatedTour['isFavorite'] = savedIds.contains(tour['id']);
       return updatedTour;

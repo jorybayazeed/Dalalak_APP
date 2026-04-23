@@ -42,8 +42,8 @@ class TourGuideBottomNavigationBar extends StatelessWidget {
                   controller: controller,
                 ),
                 _buildNavItem(
-                  icon: Icons.chat_bubble_outline,
-                  label: 'Chat',
+                    icon: Icons.campaign,
+                   label: 'Broadcast',
                   index: 2,
                   controller: controller,
                 ),

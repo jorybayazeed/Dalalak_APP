@@ -30,12 +30,15 @@ class LiveTourController extends GetxController {
   final RxBool isTourEnded = false.obs;
   final Rxn<Timestamp> sessionStartedAt = Rxn<Timestamp>();
 
-  @override
-  void onInit() {
-    super.onInit();
-    _listenToBookings();
-    load();
-  }
+ @override
+void onInit() {
+  super.onInit();
+  _listenToBookings();
+  
+  load().then((_) {
+    startTourIfNeeded(); 
+  });
+}
 
   double? _toDouble(dynamic v) {
     if (v == null) return null;
@@ -291,9 +294,11 @@ class LiveTourController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
       );
     }
+   
   }
 
   Future<void> _persistState() async {
+     print('WRITING LIVE STATE...');
     await _packagesService.updateLiveTourState(
       packageId: packageId,
       activeActivityId: activeActivityId.value,
@@ -302,4 +307,15 @@ class LiveTourController extends GetxController {
       sessionStartedAt: sessionStartedAt.value,
     );
   }
+  Future<void> startTourIfNeeded() async {
+  final live = packageData['liveTourState'];
+  print('START TOUR TRIGGERED');
+  if (live != null) return;
+
+  sessionStartedAt.value = Timestamp.now();
+  isTourEnded.value = false;
+
+  await _persistState();
+  await load();
+}
 }

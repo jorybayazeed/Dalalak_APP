@@ -96,7 +96,7 @@ class CreatePackageView extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
 
-      /// 🟢 STEP 1 (General Info)
+      /// STEP 1 (General Info)
       SizedBox(height: 24.h),
 
       Directionality(
@@ -157,7 +157,7 @@ else if (currentStep.value == 1) {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
 
-      /// 🟡 STEP 2 (Booking)
+      /// STEP 2 (Booking)
 
       SizedBox(height: 24.h),
 
@@ -231,11 +231,11 @@ else {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
 
-      /// 🔵 STEP 3 (Activities + Publish)
+      /// Activities + Publish
 
       SizedBox(height: 24.h),
 
-      /// Activities Section (نفس كودك)
+      /// STEP 3 (Activities Section)
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

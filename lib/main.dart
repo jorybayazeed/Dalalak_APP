@@ -8,13 +8,17 @@ import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/services/storage_service.dart';
 import 'package:tour_app/services/user_service.dart';
+import 'package:tour_app/view/main/tour_guide/dashboard/controllers/dashboard_controller.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
+import 'package:tour_app/view/main/tourist/home/controllers/tourist_notifications_controller.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
 import 'package:tour_app/view/onboarding/views/onboarding_view.dart';
 
 
+
 void main() async {
+  
   WidgetsFlutterBinding.ensureInitialized();
 
   String? initializationError;
@@ -29,6 +33,10 @@ void main() async {
     Get.put(PackagesService(), permanent: true);
     Get.put(GamificationService(), permanent: true);
     Get.put(TouristHomeController(), permanent: true);
+
+    Get.put(DashboardController(), permanent: true);
+    Get.put(TouristNotificationsController(), permanent: true);
+
   } catch (e, st) {
     initializationError = e.toString();
     debugPrint('App initialization failed: $e');
@@ -42,7 +50,6 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key, this.initializationError});
 
   final String? initializationError;
-
   @override
   Widget build(BuildContext context) {
     return OrientationBuilder(

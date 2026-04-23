@@ -1,8 +1,5 @@
 import 'dart:async';
 import 'package:get/get.dart';
-import 'package:tour_app/services/auth_service.dart';
-import 'package:tour_app/services/storage_service.dart';
-import 'package:tour_app/view/authentication/views/login_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tour_app/services/user_service.dart';
 import 'package:tour_app/view/main/tourist/profile/views/edit_profile_view.dart';
@@ -212,7 +209,7 @@ class TouristProfileController extends GetxController {
   }) async {
     try {
       isSavingProfile.value = true;
-
+      
       final oldEmail = (userData['email'] ?? '').toString().trim();
       final newEmail = email.trim();
 
@@ -220,7 +217,7 @@ class TouristProfileController extends GetxController {
           oldEmail.isNotEmpty &&
           newEmail.isNotEmpty &&
           oldEmail.toLowerCase() != newEmail.toLowerCase();
-
+      
       await _userService.updateCurrentUserProfile(
         fullName: fullName,
         email: email,

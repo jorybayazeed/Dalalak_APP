@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:tour_app/services/packages_service.dart';
@@ -18,15 +17,16 @@ class GuideToursController extends GetxController {
   final RxMap<String, List<Map<String, dynamic>>> ratingsByTourId =
       <String, List<Map<String, dynamic>>>{}.obs;
 
-  final Map<String, Timestamp?> _sessionStartedAtByTourId = <String, Timestamp?>{};
+  final Map<String, Timestamp?> _sessionStartedAtByTourId =
+      <String, Timestamp?>{};
   final Map<String, QuerySnapshot<Map<String, dynamic>>> _lastBookingSnapshots =
       <String, QuerySnapshot<Map<String, dynamic>>>{};
 
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
-      _bookingCountSubs = {};
+  _bookingCountSubs = {};
 
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
-      _ratingsSubs = {};
+  _ratingsSubs = {};
 
   final Map<String, String> _userNameCache = <String, String>{};
 
@@ -48,42 +48,48 @@ class GuideToursController extends GetxController {
   void onInit() {
     super.onInit();
     _packagesService.getPackagesStream().listen((packagesList) {
-      final next = packagesList.map((p) {
-        final safe = Map<String, dynamic>.from(_deepCopy(p) as Map);
-        final id = (p['id'] ?? '').toString();
-        if (id.isNotEmpty) {
-          final live = safe['liveTourState'];
-          Timestamp? startedAt;
-          if (live is Map<String, dynamic>) {
-            final raw = live['sessionStartedAt'];
-            if (raw is Timestamp) {
-              startedAt = raw;
+      final next = packagesList
+          .where((p) => p['isCancelled'] != true) // 🔥 هذا السطر الجديد
+          .map((p) {
+            final safe = Map<String, dynamic>.from(_deepCopy(p) as Map);
+            final id = (p['id'] ?? '').toString();
+            if (id.isNotEmpty) {
+              final live = safe['liveTourState'];
+              Timestamp? startedAt;
+              if (live is Map<String, dynamic>) {
+                final raw = live['sessionStartedAt'];
+                if (raw is Timestamp) {
+                  startedAt = raw;
+                }
+              }
+
+              final previous = _sessionStartedAtByTourId[id];
+              _sessionStartedAtByTourId[id] = startedAt;
+
+              _ensureBookingCountListener(id);
+              _ensureRatingsListener(id);
+
+              if (previous != startedAt) {
+                _recomputeRegisteredCount(tourId: id);
+              }
             }
-          }
-
-          final previous = _sessionStartedAtByTourId[id];
-          _sessionStartedAtByTourId[id] = startedAt;
-
-          _ensureBookingCountListener(id);
-          _ensureRatingsListener(id);
-
-          if (previous != startedAt) {
-            _recomputeRegisteredCount(tourId: id);
-          }
-        }
-        return {
-          'id': id,
-          'title': (safe['tourTitle'] ?? '').toString(),
-          'destination': (safe['destination'] ?? '').toString(),
-          'availableDates': (safe['availableDates'] ?? '').toString(),
-          'activities': safe['activities'],
-        };
-      }).toList();
+            return {
+              'id': id,
+              'title': (safe['tourTitle'] ?? '').toString(),
+              'destination': (safe['destination'] ?? '').toString(),
+              'availableDates': (safe['availableDates'] ?? '').toString(),
+              'activities': safe['activities'],
+              'liveTourState': safe['liveTourState'],
+            };
+          })
+          .toList();
 
       tours.assignAll(next);
 
       final activeIds = next.map((e) => (e['id'] ?? '').toString()).toSet();
-      final toRemove = _bookingCountSubs.keys.where((id) => !activeIds.contains(id)).toList();
+      final toRemove = _bookingCountSubs.keys
+          .where((id) => !activeIds.contains(id))
+          .toList();
       for (final id in toRemove) {
         _bookingCountSubs.remove(id)?.cancel();
         registeredCountByTourId.remove(id);
@@ -91,7 +97,9 @@ class GuideToursController extends GetxController {
         _lastBookingSnapshots.remove(id);
       }
 
-      final ratingToRemove = _ratingsSubs.keys.where((id) => !activeIds.contains(id)).toList();
+      final ratingToRemove = _ratingsSubs.keys
+          .where((id) => !activeIds.contains(id))
+          .toList();
       for (final id in ratingToRemove) {
         _ratingsSubs.remove(id)?.cancel();
         averageRatingByTourId.remove(id);
@@ -123,7 +131,10 @@ class GuideToursController extends GetxController {
           userName = cached;
         } else {
           try {
-            final userDoc = await _firestore.collection('users').doc(userId).get();
+            final userDoc = await _firestore
+                .collection('users')
+                .doc(userId)
+                .get();
             if (userDoc.exists) {
               final u = userDoc.data();
               final resolved = (u?['fullName'] ?? u?['name'] ?? '').toString();
@@ -167,30 +178,33 @@ class GuideToursController extends GetxController {
         .doc(tourId)
         .collection('ratings')
         .snapshots()
-        .listen((snap) {
-      final docs = snap.docs;
-      if (docs.isEmpty) {
-        averageRatingByTourId[tourId] = 0.0;
-        ratingsCountByTourId[tourId] = 0;
-        ratingsByTourId[tourId] = <Map<String, dynamic>>[];
-        return;
-      }
+        .listen(
+          (snap) {
+            final docs = snap.docs;
+            if (docs.isEmpty) {
+              averageRatingByTourId[tourId] = 0.0;
+              ratingsCountByTourId[tourId] = 0;
+              ratingsByTourId[tourId] = <Map<String, dynamic>>[];
+              return;
+            }
 
-      var sum = 0.0;
-      for (final d in docs) {
-        final data = d.data();
-        final r = (data['rating'] as num?)?.toDouble() ?? 0.0;
-        sum += r;
-      }
-      averageRatingByTourId[tourId] = sum / docs.length;
-      ratingsCountByTourId[tourId] = docs.length;
+            var sum = 0.0;
+            for (final d in docs) {
+              final data = d.data();
+              final r = (data['rating'] as num?)?.toDouble() ?? 0.0;
+              sum += r;
+            }
+            averageRatingByTourId[tourId] = sum / docs.length;
+            ratingsCountByTourId[tourId] = docs.length;
 
-      _refreshRatingsList(tourId: tourId, docs: docs);
-    }, onError: (_) {
-      averageRatingByTourId[tourId] = 0.0;
-      ratingsCountByTourId[tourId] = 0;
-      ratingsByTourId[tourId] = <Map<String, dynamic>>[];
-    });
+            _refreshRatingsList(tourId: tourId, docs: docs);
+          },
+          onError: (_) {
+            averageRatingByTourId[tourId] = 0.0;
+            ratingsCountByTourId[tourId] = 0;
+            ratingsByTourId[tourId] = <Map<String, dynamic>>[];
+          },
+        );
 
     _ratingsSubs[tourId] = sub;
   }
@@ -230,21 +244,24 @@ class GuideToursController extends GetxController {
         .collectionGroup('upcomingBookings')
         .where('tourId', isEqualTo: tourId)
         .snapshots()
-        .listen((snap) {
-      _lastBookingSnapshots[tourId] = snap;
-      _recomputeRegisteredCount(tourId: tourId);
-    }, onError: (e) {
-      registeredCountByTourId[tourId] = 0;
-      // The thrown exception usually contains a direct Firebase Console link
-      // to create the required index.
-      // ignore: avoid_print
-      print(e);
-      Get.snackbar(
-        'Bookings index required',
-        'Open Debug Console to copy the index creation link from this error.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    });
+        .listen(
+          (snap) {
+            _lastBookingSnapshots[tourId] = snap;
+            _recomputeRegisteredCount(tourId: tourId);
+          },
+          onError: (e) {
+            registeredCountByTourId[tourId] = 0;
+            // The thrown exception usually contains a direct Firebase Console link
+            // to create the required index.
+            // ignore: avoid_print
+            print(e);
+            Get.snackbar(
+              'Bookings index required',
+              'Open Debug Console to copy the index creation link from this error.',
+              snackPosition: SnackPosition.BOTTOM,
+            );
+          },
+        );
 
     _bookingCountSubs[tourId] = sub;
   }
@@ -265,4 +282,60 @@ class GuideToursController extends GetxController {
 
     super.onClose();
   }
+  Future<void> cancelTour(String id) async {
+  try {
+    
+    await _packagesService.cancelTour(id);
+
+   final tourDoc = await _firestore
+    .collection('tourPackages')
+    .doc(id)
+    .get();
+
+final tourTitle = tourDoc.data()?['tourTitle'] ?? 'Your tour';
+
+    final bookingsSnapshot = await _firestore
+        .collectionGroup('upcomingBookings')
+        .where('tourId', isEqualTo: id)
+        .get();
+
+    // send notification
+    for (var doc in bookingsSnapshot.docs) {
+      final data = doc.data();
+
+      final touristId = data['userId']; 
+
+      if (touristId != null && touristId.toString().isNotEmpty) {
+        await _firestore
+            .collection('users')
+            .doc(touristId)
+            .collection('notifications')
+            .add({
+          'title': 'Tour Cancelled',
+          'message': '$tourTitle has been cancelled by the guide.',
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    }
+
+    Get.snackbar('Success', 'Tour cancelled successfully');
+  } catch (e) {
+    Get.snackbar('Error', e.toString());
+  }
+}
+
+Future<void> startTour(String id) async {
+  await FirebaseFirestore.instance
+      .collection('tourPackages') 
+      .doc(id)
+      .update({
+    'liveTourState': {
+      'activeActivityId': '',
+      'completedActivityIds': [],
+      'ended': false,
+      'sessionStartedAt': Timestamp.now(),
+    }
+  });
+}
 }

@@ -7,12 +7,12 @@ import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/services/packages_service.dart';
-import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/bookings_view.dart';
 import 'package:tour_app/view/main/tourist/explore/views/explore_view.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
 import 'package:tour_app/view/main/tourist/profile/views/profile_view.dart';
 import 'package:tour_app/view/main/tourist/rewards/views/rewards_view.dart';
+
 
 class TouristHomeController extends GetxController {
   final PackagesService _packagesService = Get.find<PackagesService>();
@@ -87,9 +87,6 @@ class TouristHomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    Future.microtask(() async {
-    await _gamificationService.refreshBadgesForCurrentUser();
-  });
 
     loadUserName();
 
@@ -812,19 +809,47 @@ class TouristHomeController extends GetxController {
   }
 
   Future<void> _maybeAwardTourCompletionAndNotify(String tourId) async {
-    try {
-      final earned =
-          await _gamificationService.awardTourCompletionPoints(packageId: tourId);
+  try {
+    final earned =
+        await _gamificationService.awardTourCompletionPoints(packageId: tourId);
 
-      if (earned > 0) {
+    if (earned > 0) {
+      Get.snackbar(
+        'Reward',
+        'Thank you for completing the tour you earned +$earned',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+
+    ///  Explorer Badge 
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId);
+
+    final userDoc = await userRef.get();
+    final data = userDoc.data() ?? {};
+
+    if ((data['completedTours'] ?? 0) == 0) {
+      await userRef.set({
+        'completedTours': 1,
+      }, SetOptions(merge: true));
+
+      final newBadges =
+          await _gamificationService.checkAndUnlockBadges();
+
+      if (newBadges.contains('explorer')) {
         Get.snackbar(
-          'Reward',
-          'Thank you for completing the tour you earned +$earned',
+          '🎉 New Badge!',
+          'You unlocked Explorer!',
           snackPosition: SnackPosition.BOTTOM,
         );
       }
-    } catch (_) {}
-  }
+    }
+
+  } catch (_) {}
+}
 
   Future<void> loadTourActivities(
     String tourId, {
@@ -996,10 +1021,28 @@ class TouristHomeController extends GetxController {
 
     try {
       await _gamificationService.awardRatingPoints(packageId: tourId);
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+      await FirebaseFirestore.instance
+    .collection('users')
+    .doc(userId)
+    .update({
+  'reviewsCount': FieldValue.increment(1),
+});
+       final newBadges =
+    await _gamificationService.checkAndUnlockBadges();
+    
+       if (newBadges.contains('reviewer')) {
+  Get.snackbar(
+    '🎉 New Badge!',
+    'You unlocked Reviewer Badge!',
+    snackPosition: SnackPosition.BOTTOM,
+  );
+}
     } catch (_) {}
 
     await loadCurrentTours();
   }
+  
 
   double? _toDouble(dynamic v) {
     if (v == null) return null;

@@ -49,28 +49,19 @@ class TouristRewardsView extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 14.h),
+
               _PointsCard(home: home),
               SizedBox(height: 16.h),
+
               const _PointsReportSection(),
               SizedBox(height: 16.h),
-              Text(
-                'Milestones',
-                style: GoogleFonts.inter(
-                  color: Colors.black,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+
+              Text('Your Badges'),
               SizedBox(height: 12.h),
-              Obx(() {
-                final points = home.totalPoints.value;
-                return _MilestonesGrid(points: points);
-              }),
+              _BadgesGrid(),
+
               SizedBox(height: 16.h),
-              _EarnedBadgesSection(home: home),
-              SizedBox(height: 16.h),
-              _LockedBadgesSection(),
-              SizedBox(height: 16.h),
+
               _HowToEarnPointsSection(),
               SizedBox(height: 24.h),
             ],
@@ -206,7 +197,10 @@ class _PointsCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 6.h,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(46),
                     borderRadius: BorderRadius.circular(18.r),
@@ -222,7 +216,10 @@ class _PointsCard extends StatelessWidget {
                 ),
                 SizedBox(width: 10.w),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 6.h,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(46),
                     borderRadius: BorderRadius.circular(18.r),
@@ -472,444 +469,6 @@ class _PointsReportSection extends StatelessWidget {
   }
 }
 
-class _MilestonesGrid extends StatelessWidget {
-  const _MilestonesGrid({required this.points});
-
-  final int points;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <Map<String, dynamic>>[
-      {'points': 500, 'title': '10% discount'},
-      {'points': 1000, 'title': 'Free tour upgrade'},
-      {'points': 2000, 'title': 'VIP guide access'},
-      {'points': 5000, 'title': 'Premium membership'},
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12.h,
-        crossAxisSpacing: 12.w,
-        childAspectRatio: 1.4,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final m = items[index];
-        final p = (m['points'] as int?) ?? 0;
-        final title = (m['title'] ?? '').toString();
-        final unlocked = points >= p;
-
-        return Container(
-          padding: EdgeInsets.all(14.w),
-          decoration: BoxDecoration(
-            color: unlocked ? const Color(0xFFE9F7F2) : Colors.white,
-            borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(
-              color: unlocked ? const Color(0xFF00A86B) : const Color(0xFFE5E5E5),
-              width: 1.4,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(10),
-                blurRadius: 10,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$p',
-                      style: GoogleFonts.inter(
-                        color: Colors.black,
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: 4.h),
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFF666666),
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (unlocked)
-                Container(
-                  width: 26.w,
-                  height: 26.h,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF00A86B),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.check, color: Colors.white, size: 16.sp),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _EarnedBadgesSection extends StatelessWidget {
-  const _EarnedBadgesSection({required this.home});
-
-  final TouristHomeController home;
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      final count = home.badgesCount.value;
-
-      final earned = <Map<String, dynamic>>[
-        {
-          'title': 'First Explorer',
-          'subtitle': 'Completed your first tour',
-          'points': 100,
-          'date': '2024-11-01',
-          'icon': Icons.star,
-          'bg': const Color(0xFFFFF3E0),
-        },
-        {
-          'title': 'Heritage Hunter',
-          'subtitle': 'Visited 5 cultural heritage sites',
-          'points': 250,
-          'date': '2024-11-10',
-          'icon': Icons.location_on,
-          'bg': const Color(0xFFE8F5E9),
-        },
-        {
-          'title': 'Photo Pro',
-          'subtitle': 'Shared 10 tour photos',
-          'points': 150,
-          'date': '2024-11-12',
-          'icon': Icons.photo_camera,
-          'bg': const Color(0xFFE3F2FD),
-        },
-      ];
-
-      final visible = earned.take(count.clamp(0, earned.length)).toList();
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Earned Badges',
-                  style: GoogleFonts.inter(
-                    color: Colors.black,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00A86B),
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                child: Text(
-                  '${visible.length} Earned',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12.h,
-              crossAxisSpacing: 12.w,
-              childAspectRatio: 1.25,
-            ),
-            itemCount: visible.length,
-            itemBuilder: (context, index) {
-              final b = visible[index];
-              return _BadgeCard(
-                title: (b['title'] ?? '').toString(),
-                subtitle: (b['subtitle'] ?? '').toString(),
-                points: (b['points'] as int?) ?? 0,
-                date: (b['date'] ?? '').toString(),
-                icon: (b['icon'] as IconData?) ?? Icons.star,
-                iconBg: (b['bg'] as Color?) ?? const Color(0xFFF5F5F5),
-                locked: false,
-                progress: null,
-              );
-            },
-          ),
-        ],
-      );
-    });
-  }
-}
-
-class _LockedBadgesSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final locked = <Map<String, dynamic>>[
-      {
-        'title': 'Tour Master',
-        'subtitle': 'Complete 10 tours',
-        'points': 500,
-        'icon': Icons.emoji_events,
-        'progressText': '3 / 10',
-        'progress': 0.30,
-      },
-      {
-        'title': 'Review Expert',
-        'subtitle': 'Write 20 detailed reviews',
-        'points': 300,
-        'icon': Icons.verified,
-        'progressText': '8 / 20',
-        'progress': 0.40,
-      },
-      {
-        'title': 'Adventure Seeker',
-        'subtitle': 'Try tours from 5 different categories',
-        'points': 400,
-        'icon': Icons.flash_on,
-        'progressText': '2 / 5',
-        'progress': 0.40,
-      },
-      {
-        'title': 'Goal Getter',
-        'subtitle': 'Complete 3 tours in one month',
-        'points': 200,
-        'icon': Icons.adjust,
-        'progressText': '1 / 3',
-        'progress': 0.33,
-      },
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Locked Badges',
-                style: GoogleFonts.inter(
-                  color: Colors.black,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Text(
-              'Complete challenges to unlock',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF777777),
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12.h),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12.h,
-            crossAxisSpacing: 12.w,
-            childAspectRatio: 0.72,
-          ),
-          itemCount: locked.length,
-          itemBuilder: (context, index) {
-            final b = locked[index];
-            return _BadgeCard(
-              title: (b['title'] ?? '').toString(),
-              subtitle: (b['subtitle'] ?? '').toString(),
-              points: (b['points'] as int?) ?? 0,
-              date: '',
-              icon: (b['icon'] as IconData?) ?? Icons.lock,
-              iconBg: const Color(0xFFF2F2F2),
-              locked: true,
-              progress: {
-                'text': (b['progressText'] ?? '').toString(),
-                'value': (b['progress'] as num?)?.toDouble() ?? 0.0,
-              },
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _BadgeCard extends StatelessWidget {
-  const _BadgeCard({
-    required this.title,
-    required this.subtitle,
-    required this.points,
-    required this.date,
-    required this.icon,
-    required this.iconBg,
-    required this.locked,
-    required this.progress,
-  });
-
-  final String title;
-  final String subtitle;
-  final int points;
-  final String date;
-  final IconData icon;
-  final Color iconBg;
-  final bool locked;
-  final Map<String, dynamic>? progress;
-
- @override
-Widget build(BuildContext context) {
-  final progressValue = (progress?['value'] as num?)?.toDouble();
-  final progressText = (progress?['text'] ?? '').toString();
-
-  return Container(
-    padding: EdgeInsets.all(8.w),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18.r),
-      border: Border.all(color: const Color(0xFFEDEDED)),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 34.w,
-              height: 34.w,
-              decoration: BoxDecoration(
-                color: iconBg,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 18.sp,
-                color: locked ? const Color(0xFF8E8E93) : const Color(0xFFF2994A),
-              ),
-            ),
-            const Spacer(),
-            if (locked)
-              const Icon(Icons.lock_outline, size: 16, color: Color(0xFF8E8E93)),
-          ],
-        ),
-        SizedBox(height: 10.h),
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF1C1C1E),
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: 4.h),
-        Text(
-          subtitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF6B6B6B),
-            fontSize: 10.sp,
-            fontWeight: FontWeight.w500,
-            height: 1.35,
-          ),
-        ),
-        SizedBox(height: 4.h),
-        if (!locked && date.isNotEmpty)
-          Text(
-            date,
-            style: GoogleFonts.inter(
-              color: const Color(0xFF8E8E93),
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        if (progressValue != null) ...[
-          SizedBox(height: 8.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                progressText,
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF1C1C1E),
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '${(progressValue * 100).round()}%',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF6B6B6B),
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 6.h),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999.r),
-            child: LinearProgressIndicator(
-              value: progressValue,
-              minHeight: 6.h,
-              backgroundColor: const Color(0xFFEAEAEA),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFFE85D75)),
-            ),
-          ),
-        ],
-        SizedBox(height: 8.h),
-        Text(
-          '+$points pts',
-          style: GoogleFonts.inter(
-            color: const Color(0xFFF2994A),
-            fontSize: 10.sp,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-}
-
 class _HowToEarnPointsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -919,21 +478,13 @@ class _HowToEarnPointsSection extends StatelessWidget {
         'title': 'Complete a tour',
         'points': '+100 points',
       },
-      {
-        'icon': Icons.star,
-        'title': 'Write a review',
-        'points': '+50 points',
-      },
+      {'icon': Icons.star, 'title': 'Write a review', 'points': '+50 points'},
       {
         'icon': Icons.photo_camera,
         'title': 'Share photos',
         'points': '+25 points',
       },
-      {
-        'icon': Icons.group,
-        'title': 'Refer a friend',
-        'points': '+200 points',
-      },
+      {'icon': Icons.group, 'title': 'Refer a friend', 'points': '+200 points'},
     ];
 
     return Container(
@@ -991,36 +542,36 @@ class _HowToEarnPointsSection extends StatelessWidget {
                     ),
                     SizedBox(width: 10.w),
                     Expanded(
-  child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    crossAxisAlignment: CrossAxisAlignment.start,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(
-        (it['title'] ?? '').toString(),
-        maxLines: 2,
-        overflow: TextOverflow.visible,
-        style: GoogleFonts.inter(
-          color: Colors.white,
-          fontSize: 10.sp,
-          fontWeight: FontWeight.w800,
-          height: 1.2,
-        ),
-      ),
-      SizedBox(height: 4.h),
-      Text(
-        (it['points'] ?? '').toString(),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.inter(
-          color: Colors.white.withAlpha(230),
-          fontSize: 10.sp,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ],
-  ),
-)
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            (it['title'] ?? '').toString(),
+                            maxLines: 2,
+                            overflow: TextOverflow.visible,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w800,
+                              height: 1.2,
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            (it['points'] ?? '').toString(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withAlpha(230),
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -1028,6 +579,202 @@ class _HowToEarnPointsSection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+class _BadgesGrid extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+
+        final badges = List<String>.from(data['badges'] ?? []);
+
+        final booking = data['bookingCount'] ?? 0;
+        final reviews = data['reviewsCount'] ?? 0;
+        final quiz = data['quizCount'] ?? 0;
+        final completed = data['completedTours'] ?? 0;
+
+        final badgeList = [
+          _badgeData(
+            key: 'first_booking',
+            title: 'First Booking',
+            subtitle: 'Book your first tour',
+            icon: Icons.flight_takeoff,
+            current: booking,
+            required: 1,
+          ),
+          _badgeData(
+            key: 'reviewer',
+            title: 'Reviewer',
+            subtitle: 'Write 3 reviews',
+            icon: Icons.rate_review,
+            current: reviews,
+            required: 3,
+          ),
+          _badgeData(
+            key: 'quiz_starter',
+            title: 'Quiz Starter',
+            subtitle: 'Complete 3 quiz',
+            icon: Icons.quiz,
+            current: quiz,
+            required: 3,
+          ),
+          _badgeData(
+            key: 'explorer',
+            title: 'Explorer',
+            subtitle: 'Complete 5 tour',
+            icon: Icons.explore,
+            current: completed,
+            required: 5,
+          ),
+        ];
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: badgeList.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.1,
+          ),
+          itemBuilder: (context, index) {
+            final badge = badgeList[index];
+            final unlocked = badges.contains(badge['key']);
+
+            return _BadgeCard(
+              title: badge['title'],
+              subtitle: badge['subtitle'],
+              icon: badge['icon'],
+              locked: !unlocked,
+              current: badge['current'],
+              required: badge['required'],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+Map<String, dynamic> _badgeData({
+  required String key,
+  required String title,
+  required String subtitle,
+  required IconData icon,
+  required int current,
+  required int required,
+}) {
+  return {
+    'key': key,
+    'title': title,
+    'subtitle': subtitle,
+    'icon': icon,
+    'current': current,
+    'required': required,
+  };
+}
+class _BadgeCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool locked;
+  final int current;
+  final int required;
+
+  const _BadgeCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.locked,
+    required this.current,
+    required this.required,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (current / required).clamp(0.0, 1.0);
+    final displayCurrent = current > required ? required : current;
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: const Color(0xFFE5E5E5)),
+      ),
+      child: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Row(
+      children: [
+        Icon(
+          icon,
+          color: locked ? Colors.grey : const Color(0xFF00A86B),
+        ),
+        const Spacer(),
+        if (locked)
+          const Icon(Icons.lock, size: 16, color: Colors.grey),
+      ],
+    ),
+
+    SizedBox(height: 8.h),
+
+    Text(
+      title,
+      style: GoogleFonts.inter(fontWeight: FontWeight.w800),
+    ),
+
+    SizedBox(height: 2.h),
+
+    Text(
+      subtitle,
+      maxLines: 2, 
+      overflow: TextOverflow.ellipsis, 
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        color: Colors.grey,
+      ),
+    ),
+
+    const Spacer(), 
+
+    LinearProgressIndicator(
+      value: progress,
+      minHeight: 6,
+      backgroundColor: Colors.grey.shade200,
+      valueColor: AlwaysStoppedAnimation(
+        locked ? Colors.grey : const Color(0xFF00A86B),
+      ),
+    ),
+
+    SizedBox(height: 6.h),
+
+
+
+Text(
+  locked
+      ? '$displayCurrent / $required'
+      : 'Completed',
+  style: GoogleFonts.inter(
+    fontSize: 11.sp,
+    fontWeight: FontWeight.w600,
+    color: locked ? Colors.grey : const Color(0xFF00A86B),
+  ),
+),
+  ],
+),
     );
   }
 }

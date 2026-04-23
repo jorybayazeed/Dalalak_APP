@@ -11,10 +11,7 @@ import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart
 class BookingView extends StatefulWidget {
   final Map<String, dynamic> tour;
 
-  const BookingView({
-    super.key,
-    required this.tour,
-  });
+  const BookingView({super.key, required this.tour});
 
   @override
   State<BookingView> createState() => _BookingViewState();
@@ -38,10 +35,7 @@ class _BookingViewState extends State<BookingView> {
       ),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: 14.w,
-        vertical: 10.h,
-      ),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12.r),
         borderSide: const BorderSide(color: Color(0xFFE2E2E2)),
@@ -135,27 +129,37 @@ class _BookingViewState extends State<BookingView> {
           .collection('upcomingBookings')
           .doc(tourId)
           .set({
-        'tourId': tourId,
-        'tourTitle': widget.tour['tourTitle'],
-        'destination': widget.tour['destination'],
-        'price': widget.tour['price'],
-        'availableDates': widget.tour['availableDates'],
-        'durationValue': widget.tour['durationValue'],
-        'durationUnit': widget.tour['durationUnit'],
-        'guests': int.parse(guestsController.text.trim()),
-        'cardHolderName': cardNameController.text.trim(),
-        'fullName': userData['fullName'] ?? '',
-        'email': userData['email'] ?? '',
-        'phone': userData['phone'] ?? '',
-        'bookedAt': Timestamp.now(),
-        'status': 'Upcoming',
+            'tourId': tourId,
+            'tourTitle': widget.tour['tourTitle'],
+            'destination': widget.tour['destination'],
+            'price': widget.tour['price'],
+            'availableDates': widget.tour['availableDates'],
+            'durationValue': widget.tour['durationValue'],
+            'durationUnit': widget.tour['durationUnit'],
+            'guests': int.parse(guestsController.text.trim()),
+            'cardHolderName': cardNameController.text.trim(),
+            'fullName': userData['fullName'] ?? '',
+            'email': userData['email'] ?? '',
+            'phone': userData['phone'] ?? '',
+            'bookedAt': Timestamp.now(),
+            'status': 'Upcoming',
+          });
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'bookingCount': FieldValue.increment(1),
       });
+     final newBadges =
+    await Get.find<GamificationService>().checkAndUnlockBadges();
+
+      
+      await FirebaseFirestore.instance
+          .collection('tourPackages')
+          .doc(tourId)
+          .update({'bookings': FieldValue.increment(1)});
 
       var bookingPointsEarned = 0;
       try {
-        bookingPointsEarned = await Get.find<GamificationService>().awardBookingPoints(
-          packageId: tourId,
-        );
+        bookingPointsEarned = await Get.find<GamificationService>()
+            .awardBookingPoints(packageId: tourId);
 
         await Get.find<GamificationService>().recomputeAndSyncTotalPoints(
           userId: userId,
@@ -172,17 +176,18 @@ class _BookingViewState extends State<BookingView> {
             borderRadius: BorderRadius.circular(16.r),
           ),
           title: Text(
-            'Booking Confirmed',
+            'Congratulations !!',
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w700,
               fontSize: 16.sp,
             ),
           ),
           content: Text(
-            bookingPointsEarned > 0
+            newBadges.contains('first_booking')
+                ? 'You earned your first badge 🎉\n+ $bookingPointsEarned points'
+                : bookingPointsEarned > 0
                 ? 'You earned booking points (+$bookingPointsEarned)'
                 : 'Your booking has been confirmed',
-            style: GoogleFonts.inter(fontSize: 14.sp),
           ),
           actions: [
             TextButton(
@@ -212,11 +217,7 @@ class _BookingViewState extends State<BookingView> {
         }
       }
 
-      Get.off(
-        () => BookingSuccessView(
-          tourTitle: tourTitle,
-        ),
-      );
+      Get.off(() => BookingSuccessView(tourTitle: tourTitle));
     } catch (e) {
       Get.log('Booking confirm error: $e');
       Get.snackbar('Error', 'Failed to confirm booking');
@@ -394,8 +395,9 @@ class _BookingViewState extends State<BookingView> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Required';
                           }
-                          if (!RegExp(r'^(0[1-9]|1[0-2])\/[0-9]{2}$')
-                              .hasMatch(value.trim())) {
+                          if (!RegExp(
+                            r'^(0[1-9]|1[0-2])\/[0-9]{2}$',
+                          ).hasMatch(value.trim())) {
                             return 'Format MM/YY';
                           }
                           final parts = value.trim().split('/');

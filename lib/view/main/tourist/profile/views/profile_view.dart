@@ -12,6 +12,7 @@ class TouristProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    
     final controller = Get.put(TouristProfileController());
     final homeController = Get.find<TouristHomeController>();
 

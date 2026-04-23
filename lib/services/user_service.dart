@@ -44,6 +44,10 @@ class UserService extends GetxService {
     required String travelBudget,
     required String travelPace,
     required List<String> interests,
+    String? yearsOfExperience,
+    String? specialization,
+    List<String>? languagesSpoken,
+
   }) async {
     final user = _auth.currentUser;
     final userId = currentUserId;
@@ -83,6 +87,10 @@ class UserService extends GetxService {
         'travelBudget': travelBudget,
         'travelPace': travelPace,
         'interests': interests,
+        'yearsOfExperience': int.tryParse(yearsOfExperience ?? '0') ?? 0,
+        'specializations': specialization != null ? [specialization] : [],
+        'languages': languagesSpoken ?? [],
+
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } on FirebaseAuthException catch (e) {

@@ -11,6 +11,7 @@ import 'package:tour_app/view/main/tour_guide/tours/views/guide_tours_view.dart'
 class DashboardController extends GetxController {
   final UserService _userService = Get.find<UserService>();
   final PackagesService _packagesService = Get.find<PackagesService>();
+  
 
   final RxInt currentBottomNavIndex = 0.obs;
 
@@ -42,13 +43,42 @@ class DashboardController extends GetxController {
           <String>[];
     }
   }
-
   void _loadPackagesCount() {
-    _packagesService.getPackagesStream().listen((packages) {
-      totalPackages.value = packages.length;
-    });
-  }
+  _packagesService.getPackagesStream().listen((packages) {
 
+    final currentUserId = _userService.currentUserId;
+    if (currentUserId == null) return;
+
+    final myPackages = packages.where((p) {
+      return p['guideId'] == currentUserId;
+    });
+
+    // Total Packages
+    totalPackages.value = myPackages.length;
+
+    // Active Tours
+    int activeCount = 0;
+
+    for (var p in myPackages) {
+      final live = p['liveTourState'];
+
+      if (live != null && live['ended'] == false) {
+        activeCount++;
+      }
+    }
+
+    activeTours.value = activeCount;
+
+    // Total Bookings
+    int bookingsCount = 0;
+
+    for (var p in myPackages) {
+      bookingsCount += (p['bookings'] ?? 0) as int;
+    }
+
+    totalBookings.value = bookingsCount;
+  });
+}
   void changeBottomNavIndex(int index) {
     if (currentBottomNavIndex.value == index) return;
 

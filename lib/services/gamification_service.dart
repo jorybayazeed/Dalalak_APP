@@ -212,11 +212,11 @@ class GamificationService extends GetxService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _triggerBadgeCheck(
-        tx: tx,
-        userRef: userRef,
-        totalPoints: newTotalPoints,
-      );
+        //await _triggerBadgeCheck(
+       // tx: tx,
+        //userRef: userRef,
+       // totalPoints: newTotalPoints,
+     // );
 
       return points;
     });
@@ -607,11 +607,11 @@ class GamificationService extends GetxService {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        await _triggerBadgeCheck(
-          tx: tx,
-          userRef: userRef,
-          totalPoints: newTotalPoints,
-        );
+        //await _triggerBadgeCheck(
+         // tx: tx,
+        //  userRef: userRef,
+         // totalPoints: newTotalPoints,
+        //);
 
         return SubmitChallengeResult(
           pointsEarned: pointsToAward,
@@ -743,11 +743,11 @@ class GamificationService extends GetxService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _triggerBadgeCheck(
-        tx: tx,
-        userRef: userRef,
-        totalPoints: newTotalPoints,
-      );
+      //await _triggerBadgeCheck(
+       // tx: tx,
+       // userRef: userRef,
+      //  totalPoints: newTotalPoints,
+     // );
 
       return SubmitQuizAnswerResult(
         pointsEarned: pointsEarned,
@@ -757,118 +757,82 @@ class GamificationService extends GetxService {
     });
   }
 
- Future<void> _triggerBadgeCheck({
-  required Transaction tx,
-  required DocumentReference<Map<String, dynamic>> userRef,
-  required int totalPoints,
-}) async {
-  final updatedBadges = <String>{};
+ //Future<void> _triggerBadgeCheck({
+ // required Transaction tx,
+ // required DocumentReference<Map<String, dynamic>> userRef,
+ // required int totalPoints,
+//}) async {
+//  final updatedBadges = <String>{};
 
-  if (totalPoints >= 100) {
-    updatedBadges.add('points_100');
-  }
+ // if (totalPoints >= 100) {
+  //  updatedBadges.add('points_100');
+  //}
 
-  if (totalPoints >= 250) {
-    updatedBadges.add('points_250');
-  }
+  //if (totalPoints >= 250) {
+   // updatedBadges.add('points_250');
+  //}
 
-  if (totalPoints >= 500) {
-    updatedBadges.add('points_500');
-  }
+ // if (totalPoints >= 500) {
+  //  updatedBadges.add('points_500');
+  //}
 
-  final badgesList = updatedBadges.toList();
+  //final badgesList = updatedBadges.toList();
 
-  tx.set(
-    userRef,
-    {
-      'badges': badgesList,
-      'badgesCount': badgesList.length,
-      'updatedAt': FieldValue.serverTimestamp(),
-    },
-    SetOptions(merge: true),
-  );
+ // tx.set(
+   // userRef,
+    //{
+      //'badges': badgesList,
+      //'badgesCount': badgesList.length,
+     // 'updatedAt': FieldValue.serverTimestamp(),
+   // },
+   // SetOptions(merge: true),
+ // ); 
+//}
+
+Future<List<String>> checkAndUnlockBadges() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return [];
+
+  final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
+  final doc = await ref.get();
+  final data = doc.data() ?? {};
+  final quizCount = (data['quizCount'] ?? 0) + 1;
+  final completedTours = data['completedTours'] ?? 0;
+
+
+  List badges = data['badges'] ?? [];
+
+  int bookings = data['bookingCount'] ?? 0;
+  int reviews = data['reviewsCount'] ?? 0;
+  int quiz = data['quizCount'] ?? 0;
+  int completed = data['completedTours'] ?? 0;
+
+ List<String> newBadges = [];
+
+if (quizCount >= 3 && !badges.contains('quiz_starter')) {
+  newBadges.add('quiz_starter');
 }
 
-Future<void> refreshBadgesForCurrentUser() async {
-  final userId = FirebaseAuth.instance.currentUser?.uid;
-  if (userId == null) return;
+if (completedTours >= 5 && !badges.contains('explorer')) {
+  newBadges.add('explorer');
+}
 
-  print('BADGES: function started');
+if (bookings >= 1 && !badges.contains('first_booking')) {
+  newBadges.add('first_booking');
+}
 
-  final userRef =
-      FirebaseFirestore.instance.collection('users').doc(userId);
+if (reviews >= 3 && !badges.contains('reviewer')) {
+  newBadges.add('reviewer');
+}
 
-  int completedTours = 0;
-  int reviewsCount = 0;
-  int savedToursCount = 0;
+if (newBadges.isNotEmpty) {
+  await ref.update({
+    'badges': FieldValue.arrayUnion(newBadges),
+  });
+}
+  
 
-  final userSnap = await userRef.get();
-  final userData = userSnap.data() ?? <String, dynamic>{};
-  final totalPoints = (userData['totalPoints'] as num?)?.toInt() ?? 0;
-
-  final pointsEventsSnap =
-      await userRef.collection('points_events').get();
-
-  for (final doc in pointsEventsSnap.docs) {
-    final data = doc.data();
-    final type = (data['type'] ?? '').toString();
-
-    if (type == 'tour_completion') completedTours++;
-    if (type == 'rating') reviewsCount++;
-    if (type == 'save') savedToursCount++;
-  }
-
-  print('completedTours = $completedTours');
-  print('reviewsCount = $reviewsCount');
-  print('savedToursCount = $savedToursCount');
-  print('totalPoints = $totalPoints');
-
-  final updatedBadges = <String>{};
-
-  if (completedTours >= 1) {
-    updatedBadges.add('first_explorer');
-  }
-
-  if (completedTours >= 10) {
-    updatedBadges.add('tour_master');
-  }
-
-  if (reviewsCount >= 20) {
-    updatedBadges.add('review_expert');
-  }
-
-  if (savedToursCount >= 5) {
-    updatedBadges.add('adventure_seeker');
-  }
-
-  if (completedTours >= 3) {
-    updatedBadges.add('goal_getter');
-  }
-
-  if (totalPoints >= 100) {
-    updatedBadges.add('points_100');
-  }
-
-  if (totalPoints >= 250) {
-    updatedBadges.add('points_250');
-  }
-
-  if (totalPoints >= 500) {
-    updatedBadges.add('points_500');
-  }
-
-  final badgesList = updatedBadges.toList();
-
-  print('badgesList = $badgesList');
-
-  await userRef.set(
-    {
-      'badges': badgesList,
-      'badgesCount': badgesList.length,
-      'updatedAt': FieldValue.serverTimestamp(),
-    },
-    SetOptions(merge: true),
-  );
+  return newBadges;
 }
 }
 extension _ListLastOrNull<T> on List<T> {
