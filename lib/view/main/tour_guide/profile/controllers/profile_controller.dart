@@ -176,6 +176,8 @@ Future<void> saveProfile({
   languagesSpoken: languages,
 );
 
+await _loadProfileData();
+
 profileData['specializations'] = [specialization];
 profileData['languages'] = languages;
 profileData['yearsOfExperience'] = yearsOfExperience;

@@ -13,6 +13,7 @@ import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart
 import 'package:tour_app/view/main/tourist/home/controllers/tourist_notifications_controller.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/profile_dropdown.dart';
+import 'package:tour_app/view/main/tourist/shared/widgets/rate_tour_dialog.dart';
 import 'package:tour_app/view/main/tourist/home/views/about_us_view.dart';
 import 'package:tour_app/view/main/tourist/home/views/privacy_policy_view.dart';
 import 'package:tour_app/view/main/tourist/home/views/support_view.dart';
@@ -738,35 +739,6 @@ class TouristHomeView extends StatelessWidget {
                                                   });
                                             }
 
-                                            if (tourMarkers.isEmpty) {
-                                              return Container(
-                                                width: double.infinity,
-                                                padding: EdgeInsets.all(12.w),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        16.r,
-                                                      ),
-                                                  border: Border.all(
-                                                    color: const Color(
-                                                      0xFFE0E0E0,
-                                                    ),
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  'No map locations for these activities yet. The tour guide needs to pick locations (latitude/longitude) to show markers on the map.',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 12.sp,
-                                                    color: const Color(
-                                                      0xFF6B6B6B,
-                                                    ),
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-
                                             return Container(
                                               width: double.infinity,
                                               height: 230.h,
@@ -778,193 +750,217 @@ class TouristHomeView extends StatelessWidget {
                                               child: ClipRRect(
                                                 borderRadius:
                                                     BorderRadius.circular(16.r),
-                                                child: FlutterMap(
-                                                  mapController: mapController,
-                                                  options: MapOptions(
-                                                    initialCenter:
-                                                        controller
-                                                            .mapCenterByTourId[tourId] ??
-                                                        controller
-                                                            .mapCenter
-                                                            .value,
-                                                    initialZoom: 12,
-                                                    interactionOptions:
-                                                        const InteractionOptions(
-                                                          flags: InteractiveFlag
-                                                              .all,
-                                                        ),
-                                                    onTap: (_, point) {
-                                                      mapController.move(
-                                                        point,
-                                                        13,
-                                                      );
-                                                    },
-                                                  ),
+                                                child: Stack(
                                                   children: [
-                                                    TileLayer(
-                                                      urlTemplate:
-                                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                                      userAgentPackageName:
-                                                          'tour_app',
-                                                    ),
-                                                    MarkerLayer(
-                                                      markers: tourMarkers
-                                                          .map(
-                                                            (m) => Marker(
-                                                              point:
-                                                                  (m['position']
-                                                                      as LatLng),
-                                                              width: 140.w,
-                                                              height: 60.h,
-                                                              child: GestureDetector(
-                                                                onTap: () {
-                                                                  controller
-                                                                          .activeTourId
-                                                                          .value =
-                                                                      tourId;
-                                                                  final p =
-                                                                      m['position']
-                                                                          as LatLng;
-                                                                  mapController
-                                                                      .move(
-                                                                        p,
-                                                                        14,
-                                                                      );
-
-                                                                  final quizTitle =
-                                                                      (m['title']
-                                                                          as String?) ??
-                                                                      '';
-                                                                  final activityId =
-                                                                      (m['activityId']
-                                                                          as String?) ??
-                                                                      '';
-                                                                  final question =
-                                                                      (m['question']
-                                                                          as String?) ??
-                                                                      '';
-                                                                  final options =
-                                                                      (m['options']
-                                                                              as List?)
-                                                                          ?.map(
-                                                                            (
-                                                                              e,
-                                                                            ) =>
-                                                                                e.toString(),
-                                                                          )
-                                                                          .toList() ??
-                                                                      <
-                                                                        String
-                                                                      >[];
-
-                                                                  if (activityId
-                                                                          .isEmpty ||
-                                                                      question
-                                                                          .isEmpty ||
-                                                                      options
-                                                                          .isEmpty) {
-                                                                    Get.snackbar(
-                                                                      'No Quiz',
-                                                                      'This activity has no quiz yet',
-                                                                      snackPosition:
-                                                                          SnackPosition
-                                                                              .BOTTOM,
-                                                                    );
-                                                                    return;
-                                                                  }
-
-                                                                  final activities =
-                                                                      controller
-                                                                          .tourActivitiesByTourId[tourId] ??
-                                                                      const <
-                                                                        Map<
-                                                                          String,
-                                                                          dynamic
-                                                                        >
-                                                                      >[];
-                                                                  final idx = activities.indexWhere(
-                                                                    (a) =>
-                                                                        (a['activityId'] ??
-                                                                                '')
-                                                                            .toString() ==
-                                                                        activityId,
-                                                                  );
-                                                                  if (idx >=
-                                                                      0) {
-                                                                    controller
-                                                                        .setSelectedActivityIndexForTour(
-                                                                          tourId,
-                                                                          idx,
+                                                    FlutterMap(
+                                                      mapController: mapController,
+                                                      options: MapOptions(
+                                                        initialCenter:
+                                                            controller.mapCenterByTourId[
+                                                                    tourId] ??
+                                                                controller
+                                                                    .mapCenter
+                                                                    .value,
+                                                        initialZoom: 12,
+                                                        interactionOptions:
+                                                            const InteractionOptions(
+                                                          flags:
+                                                              InteractiveFlag.all,
+                                                        ),
+                                                        onTap: (_, point) {
+                                                          mapController.move(
+                                                            point,
+                                                            13,
+                                                          );
+                                                        },
+                                                      ),
+                                                      children: [
+                                                        TileLayer(
+                                                          urlTemplate:
+                                                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                          userAgentPackageName:
+                                                              'tour_app',
+                                                        ),
+                                                        if (tourMarkers.isNotEmpty)
+                                                          MarkerLayer(
+                                                            markers: tourMarkers
+                                                                .map(
+                                                                  (m) => Marker(
+                                                                    point:
+                                                                        (m['position']
+                                                                            as LatLng),
+                                                                    width: 140.w,
+                                                                    height: 72.h,
+                                                                    child:
+                                                                        GestureDetector(
+                                                                      onTap: () {
+                                                                        controller
+                                                                                .activeTourId
+                                                                                .value =
+                                                                            tourId;
+                                                                        final p =
+                                                                            m['position']
+                                                                                as LatLng;
+                                                                        mapController.move(
+                                                                          p,
+                                                                          14,
                                                                         );
-                                                                  }
 
-                                                                  showDialog<
-                                                                    void
-                                                                  >(
-                                                                    context:
-                                                                        context,
-                                                                    barrierDismissible:
-                                                                        false,
-                                                                    builder: (_) => _QuizDialog(
-                                                                      packageId:
-                                                                          tourId,
-                                                                      activityId:
-                                                                          activityId,
-                                                                      photoChallengeEnabled:
-                                                                          (m['photoChallengeEnabled']
-                                                                              as bool?) ??
-                                                                          false,
-                                                                      photoChallengeText:
-                                                                          (m['photoChallengeText']
-                                                                              as String?) ??
-                                                                          '',
-                                                                      title:
-                                                                          quizTitle,
-                                                                      question:
-                                                                          question,
-                                                                      options:
-                                                                          options,
-                                                                      onSubmit:
-                                                                          (
-                                                                            selectedAnswer,
-                                                                          ) async {
-                                                                            final service =
-                                                                                Get.find<
-                                                                                  GamificationService
-                                                                                >();
-                                                                            final result = await service.submitQuizAnswer(
-                                                                              packageId: tourId,
-                                                                              activityId: activityId,
-                                                                              answer: selectedAnswer,
-                                                                            );
+                                                                        final quizTitle =
+                                                                            (m['title']
+                                                                                as String?) ??
+                                                                                '';
+                                                                        final activityId =
+                                                                            (m['activityId']
+                                                                                as String?) ??
+                                                                                '';
+                                                                        final question =
+                                                                            (m['question']
+                                                                                as String?) ??
+                                                                                '';
+                                                                        final options =
+                                                                            (m['options']
+                                                                                    as List?)
+                                                                                ?.map((e) =>
+                                                                                    e.toString())
+                                                                                .toList() ??
+                                                                            <String>[];
 
-                                                                            await controller.loadCurrentTours();
-                                                                            return result;
-                                                                          },
+                                                                        if (activityId.isEmpty ||
+                                                                            question.isEmpty ||
+                                                                            options.isEmpty) {
+                                                                          Get.snackbar(
+                                                                            'No Quiz',
+                                                                            'This activity has no quiz yet',
+                                                                            snackPosition:
+                                                                                SnackPosition.BOTTOM,
+                                                                          );
+                                                                          return;
+                                                                        }
+
+                                                                        final activities = controller
+                                                                                .tourActivitiesByTourId[
+                                                                                    tourId] ??
+                                                                            const <Map<String, dynamic>>[];
+                                                                        final idx = activities.indexWhere(
+                                                                          (a) =>
+                                                                              (a['activityId'] ?? '')
+                                                                                  .toString() ==
+                                                                              activityId,
+                                                                        );
+                                                                        if (idx >= 0) {
+                                                                          controller
+                                                                              .setSelectedActivityIndexForTour(
+                                                                            tourId,
+                                                                            idx,
+                                                                          );
+                                                                        }
+
+                                                                        showDialog<void>(
+                                                                          context: context,
+                                                                          barrierDismissible: false,
+                                                                          builder: (_) => _QuizDialog(
+                                                                            packageId: tourId,
+                                                                            activityId: activityId,
+                                                                            photoChallengeEnabled:
+                                                                                (m['photoChallengeEnabled']
+                                                                                        as bool?) ??
+                                                                                    false,
+                                                                            photoChallengeText:
+                                                                                (m['photoChallengeText']
+                                                                                        as String?) ??
+                                                                                    '',
+                                                                            title: quizTitle,
+                                                                            question: question,
+                                                                            options: options,
+                                                                            onSubmit: (selectedAnswer) async {
+                                                                              final service =
+                                                                                  Get.find<GamificationService>();
+                                                                              final result =
+                                                                                  await service.submitQuizAnswer(
+                                                                                packageId: tourId,
+                                                                                activityId: activityId,
+                                                                                answer: selectedAnswer,
+                                                                                sessionId: (controller
+                                                                                            .tourSessionIdByTourId[tourId] ??
+                                                                                        '')
+                                                                                    .toString()
+                                                                                    .trim()
+                                                                                    .isEmpty
+                                                                                    ? null
+                                                                                    : (controller
+                                                                                            .tourSessionIdByTourId[tourId] ??
+                                                                                        '')
+                                                                                        .toString()
+                                                                                        .trim(),
+                                                                              );
+
+                                                                              await controller
+                                                                                  .loadCurrentTours();
+                                                                              return result;
+                                                                            },
+                                                                          ),
+                                                                        );
+                                                                      },
+                                                                      child: _MapMarker(
+                                                                        label:
+                                                                            (m['title'] as String),
+                                                                        isCompleted:
+                                                                            (m['isCompleted']
+                                                                                    as bool?) ??
+                                                                                false,
+                                                                      ),
                                                                     ),
-                                                                  );
-                                                                },
-                                                                child: _MapMarker(
-                                                                  label:
-                                                                      (m['title']
-                                                                          as String),
-                                                                  isCompleted:
-                                                                      (m['isCompleted']
-                                                                          as bool?) ??
-                                                                      false,
-                                                                ),
+                                                                  ),
+                                                                )
+                                                                .toList(),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                    if (tourMarkers.isEmpty)
+                                                      Positioned(
+                                                        left: 12.w,
+                                                        right: 12.w,
+                                                        bottom: 12.h,
+                                                        child: Container(
+                                                          padding: EdgeInsets.all(
+                                                            10.w,
+                                                          ),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white
+                                                                .withOpacity(0.92),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                              14.r,
+                                                            ),
+                                                            border: Border.all(
+                                                              color: const Color(
+                                                                0xFFE0E0E0,
                                                               ),
                                                             ),
-                                                          )
-                                                          .toList(),
-                                                    ),
+                                                          ),
+                                                          child: Text(
+                                                            'No map locations for these activities yet. The tour guide needs to pick locations (latitude/longitude) to show markers on the map.',
+                                                            style: GoogleFonts.inter(
+                                                              fontSize: 12.sp,
+                                                              color: const Color(
+                                                                0xFF6B6B6B,
+                                                              ),
+                                                              fontWeight:
+                                                                  FontWeight.w500,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
                                                   ],
                                                 ),
                                               ),
                                             );
+
                                           }),
-                                          SizedBox(height: 16.h),
-                                          Container(
+
+                                        SizedBox(height: 16.h),
+                                        Container(
                                             width: double.infinity,
                                             padding: EdgeInsets.all(16.w),
                                             decoration: BoxDecoration(
@@ -1153,6 +1149,18 @@ class TouristHomeView extends StatelessWidget {
                                                                       activityId,
                                                                   answer:
                                                                       selectedAnswer,
+                                                                  sessionId: (controller
+                                                                              .tourSessionIdByTourId[tourId] ??
+                                                                          '')
+                                                                      .toString()
+                                                                      .trim()
+                                                                      .isEmpty
+                                                                      ? null
+                                                                      : (controller
+                                                                              .tourSessionIdByTourId[tourId] ??
+                                                                          '')
+                                                                          .toString()
+                                                                          .trim(),
                                                                 );
 
                                                             await controller
@@ -1406,7 +1414,7 @@ class TouristHomeView extends StatelessWidget {
                                                             await Get.dialog<
                                                               void
                                                             >(
-                                                              _RateTourDialog(
+                                                              RateTourDialog(
                                                                 tourId: tourId,
                                                               ),
                                                               barrierDismissible:
@@ -1843,6 +1851,22 @@ class _PhotoChallengeDialogState extends State<_PhotoChallengeDialog> {
                                         packageId: widget.packageId,
                                         activityId: widget.activityId,
                                         photo: _photo!,
+                                        sessionId: homeController == null
+                                            ? null
+                                            : (homeController
+                                                        .tourSessionIdByTourId[
+                                                    widget.packageId] ??
+                                                '')
+                                                .toString()
+                                                .trim()
+                                                .isEmpty
+                                                ? null
+                                                : (homeController
+                                                        .tourSessionIdByTourId[
+                                                    widget.packageId] ??
+                                                '')
+                                                    .toString()
+                                                    .trim(),
                                       );
 
                                   if (!mounted) return;
@@ -1867,6 +1891,20 @@ class _PhotoChallengeDialogState extends State<_PhotoChallengeDialog> {
                                     if (activeTourId.isNotEmpty) {
                                       await homeController.loadTourActivities(
                                         activeTourId,
+                                        sessionId: (homeController
+                                                    .tourSessionIdByTourId[
+                                                activeTourId] ??
+                                            '')
+                                            .toString()
+                                            .trim()
+                                            .isEmpty
+                                            ? null
+                                            : (homeController
+                                                    .tourSessionIdByTourId[
+                                                activeTourId] ??
+                                                '')
+                                                .toString()
+                                                .trim(),
                                       );
                                     }
                                   }
@@ -2381,6 +2419,20 @@ class _QuizDialogState extends State<_QuizDialog> {
                                       await homeController.loadTourActivities(
                                         activeTourId,
                                         showCompletionSnackbars: false,
+                                        sessionId: (homeController
+                                                    .tourSessionIdByTourId[
+                                                activeTourId] ??
+                                            '')
+                                            .toString()
+                                            .trim()
+                                            .isEmpty
+                                            ? null
+                                            : (homeController
+                                                    .tourSessionIdByTourId[
+                                                activeTourId] ??
+                                                '')
+                                                .toString()
+                                                .trim(),
                                       );
                                     }
                                   }
@@ -2478,174 +2530,47 @@ class _RatePromptListener extends StatelessWidget {
         if (pending == null || pending != tourId) return;
         controller.ratePromptTourId.value = null;
 
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) return;
+
+        try {
+          final bookingSnap = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('upcomingBookings')
+              .where('tourId', isEqualTo: tourId)
+              .limit(1)
+              .get();
+          if (bookingSnap.docs.isEmpty) return;
+          final bookingStatus = (bookingSnap.docs.first.data()['status'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          if (bookingStatus != 'completed') return;
+
+          final ratingSnap = await FirebaseFirestore.instance
+              .collection('tourPackages')
+              .doc(tourId)
+              .collection('ratings')
+              .doc(user.uid)
+              .get();
+          if (ratingSnap.exists) return;
+        } catch (_) {
+          return;
+        }
+
         await Future<void>.delayed(const Duration(seconds: 2));
 
+        if (FirebaseAuth.instance.currentUser?.uid != user.uid) return;
+
         await Get.dialog<void>(
-          _RateTourDialog(tourId: tourId),
+          RateTourDialog(tourId: tourId),
           barrierDismissible: true,
         );
       });
 
       return const SizedBox.shrink();
     });
-  }
-}
-
-class _RateTourDialog extends StatefulWidget {
-  const _RateTourDialog({required this.tourId});
-
-  final String tourId;
-
-  @override
-  State<_RateTourDialog> createState() => _RateTourDialogState();
-}
-
-class _RateTourDialogState extends State<_RateTourDialog> {
-  int _rating = 5;
-  bool _isSubmitting = false;
-  final TextEditingController _reviewController = TextEditingController();
-
-  @override
-  void dispose() {
-    _reviewController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final canSubmit = !_isSubmitting;
-
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-      insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 380.w),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 16.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Rate this tour',
-                      style: GoogleFonts.inter(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: _isSubmitting
-                        ? null
-                        : () => Navigator.of(context).pop(),
-                    child: Icon(
-                      Icons.close,
-                      size: 18.sp,
-                      color: const Color(0xFF7A7A7A),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 14.h),
-              Row(
-                children: List.generate(5, (i) {
-                  final selected = i < _rating;
-                  return InkWell(
-                    onTap: _isSubmitting
-                        ? null
-                        : () => setState(() => _rating = i + 1),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 2.w),
-                      child: Icon(
-                        selected ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                        size: 26.sp,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              SizedBox(height: 14.h),
-              TextField(
-                controller: _reviewController,
-                enabled: !_isSubmitting,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Write a short review (optional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                    borderSide: const BorderSide(color: Color(0xFF00A86B)),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16.h),
-              SizedBox(
-                width: double.infinity,
-                height: 46.h,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00A86B),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                  ),
-                  onPressed: canSubmit
-                      ? () async {
-                          setState(() => _isSubmitting = true);
-                          try {
-                            final controller =
-                                Get.find<TouristHomeController>();
-                            await controller.submitTourRating(
-                              tourId: widget.tourId,
-                              rating: _rating,
-                              review: _reviewController.text.trim(),
-                            );
-
-                            if (!mounted) return;
-                            Navigator.of(context).pop();
-                            Get.snackbar(
-                              'Thanks!',
-                              'Rating submitted (+5 points)',
-                              snackPosition: SnackPosition.BOTTOM,
-                            );
-                          } catch (e) {
-                            if (!mounted) return;
-                            setState(() => _isSubmitting = false);
-                            Get.snackbar(
-                              'Error',
-                              e.toString(),
-                              snackPosition: SnackPosition.BOTTOM,
-                            );
-                          }
-                        }
-                      : null,
-                  child: Text(
-                    _isSubmitting ? 'Submitting...' : 'Submit',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

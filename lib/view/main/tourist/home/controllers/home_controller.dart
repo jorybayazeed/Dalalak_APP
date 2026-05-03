@@ -4,12 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/bookings_view.dart';
 import 'package:tour_app/view/main/tourist/explore/views/explore_view.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
+import 'package:tour_app/view/main/tourist/profile/controllers/profile_controller.dart';
 import 'package:tour_app/view/main/tourist/profile/views/profile_view.dart';
 import 'package:tour_app/view/main/tourist/rewards/views/rewards_view.dart';
 
@@ -60,6 +62,7 @@ class TouristHomeController extends GetxController {
   final completedActivityIdsByTourId = <String, List<String>>{}.obs;
   final tourEndedByTourId = <String, bool>{}.obs;
   final ratedByTourId = <String, bool>{}.obs;
+  final tourSessionIdByTourId = <String, String>{}.obs;
 
   final completedActivityIds = <String>{}.obs;
 
@@ -72,6 +75,9 @@ class TouristHomeController extends GetxController {
   final Map<String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
       _tourEndedSubs = {};
 
+  final Map<String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>
+      _tourActivitiesSubs = {};
+
   bool _bootstrappedUserDoc = false;
   bool _recomputedMissingPoints = false;
   bool _recomputedPointsOnLogin = false;
@@ -80,9 +86,168 @@ class TouristHomeController extends GetxController {
 
   int _currentToursLoadSeq = 0;
 
+  bool _asBool(dynamic v) {
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    if (v is String) {
+      final s = v.trim().toLowerCase();
+      return s == 'true' || s == '1' || s == 'yes';
+    }
+    return false;
+  }
+
   final Map<String, bool> _lastEndedByTourId = {};
   final Set<String> _tourEndedNotified = {};
   final Set<String> _bookingCompletedByTourId = {};
+  final Set<String> _scheduledRatePrompts = {};
+  final Map<String, int> _pendingTourCompletionPointsByKey = {};
+  final Set<String> _scheduledTourCompletionPointsNotifs = {};
+
+  final GetStorage _ratePromptStorage = GetStorage();
+  Set<String> _ratePromptShownTourIds = <String>{};
+  String? _ratePromptUid;
+
+  String _ratePromptStorageKey(String uid) =>
+      'rate_prompt_shown_tour_ids_$uid';
+
+  void _initRatePromptForUser(String? uid) {
+    _ratePromptUid = uid;
+    if (uid == null) {
+      _ratePromptShownTourIds = <String>{};
+      return;
+    }
+    try {
+      final raw = _ratePromptStorage.read(_ratePromptStorageKey(uid));
+      if (raw is List) {
+        _ratePromptShownTourIds = raw.map((e) => e.toString()).toSet();
+        return;
+      }
+    } catch (_) {}
+    _ratePromptShownTourIds = <String>{};
+  }
+
+  void _markRatePromptShown(String tourId) {
+    if (tourId.trim().isEmpty) return;
+    if (!_ratePromptShownTourIds.add(tourId)) return;
+    final uid = _ratePromptUid;
+    if (uid == null) return;
+    try {
+      _ratePromptStorage.write(
+        _ratePromptStorageKey(uid),
+        _ratePromptShownTourIds.toList(),
+      );
+    } catch (_) {}
+  }
+
+  String _tourSessionKey(String tourId, String? sessionId) {
+    final cleanSession = (sessionId ?? '').toString().trim();
+    return cleanSession.isEmpty ? tourId : '${tourId}|$cleanSession';
+  }
+
+  bool _isLiveEndedForBooking(
+    Map<String, dynamic>? live,
+    String bookingSessionId,
+  ) {
+    if (live == null) return false;
+    if (!_asBool(live['ended'])) return false;
+    final liveSessionId = (live['sessionId'] ?? '').toString().trim();
+    final cleanBookingSessionId = bookingSessionId.trim();
+    if (liveSessionId.isNotEmpty && cleanBookingSessionId.isNotEmpty) {
+      return liveSessionId == cleanBookingSessionId;
+    }
+    return true;
+  }
+
+  void _scheduleTourCompletionPointsAfterRating(String tourId, {String? sessionId}) {
+    final key = _tourSessionKey(tourId, sessionId);
+    final earned = _pendingTourCompletionPointsByKey[key] ?? 0;
+    if (earned <= 0) return;
+    if (_scheduledTourCompletionPointsNotifs.contains(key)) return;
+    _scheduledTourCompletionPointsNotifs.add(key);
+
+    Future<void>.delayed(const Duration(seconds: 10), () {
+      final latestEarned = _pendingTourCompletionPointsByKey[key] ?? 0;
+      if (latestEarned <= 0) return;
+      _pendingTourCompletionPointsByKey.remove(key);
+
+      Get.snackbar(
+        'Reward',
+        'Thank you for completing the tour. You earned +$latestEarned points',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    });
+  }
+
+  Future<void> _ensurePendingTourCompletionPoints(
+    String tourId, {
+    String? sessionId,
+  }) async {
+    final key = _tourSessionKey(tourId, sessionId);
+    if ((_pendingTourCompletionPointsByKey[key] ?? 0) > 0) return;
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final safeSession = (sessionId ?? '').toString().trim();
+
+      Query<Map<String, dynamic>> q = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('points_events')
+          .where('packageId', isEqualTo: tourId)
+          .where('type', isEqualTo: 'tour_completion');
+
+      if (safeSession.isNotEmpty) {
+        q = q.where('sessionId', isEqualTo: safeSession);
+      }
+
+      final snap = await q.limit(1).get();
+      if (snap.docs.isEmpty) return;
+
+      final ev = snap.docs.first.data();
+      final earned = (ev['pointsEarned'] as num?)?.toInt() ?? 0;
+      if (earned <= 0) return;
+
+      _pendingTourCompletionPointsByKey[key] = earned;
+    } catch (_) {}
+  }
+
+  void _scheduleRatePrompt(String tourId, {String? sessionId}) {
+    if (tourId.trim().isEmpty) return;
+    final key = tourId;
+    if (_scheduledRatePrompts.contains(key)) return;
+    if (_ratePromptShownTourIds.contains(key)) return;
+    _scheduledRatePrompts.add(key);
+
+    () async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      try {
+        final ratingSnap = await FirebaseFirestore.instance
+            .collection('tourPackages')
+            .doc(tourId)
+            .collection('ratings')
+            .doc(user.uid)
+            .get();
+        if (ratingSnap.exists) {
+          ratedByTourId[tourId] = true;
+          _markRatePromptShown(tourId);
+          return;
+        }
+      } catch (_) {}
+
+      if ((ratedByTourId[tourId] ?? false) == true) {
+        _markRatePromptShown(tourId);
+        return;
+      }
+      if (_ratePromptShownTourIds.contains(tourId)) return;
+
+      _markRatePromptShown(tourId);
+      ratePromptTourId.value = tourId;
+    }();
+  }
 
   @override
   void onInit() {
@@ -108,6 +273,10 @@ class TouristHomeController extends GetxController {
       sub.cancel();
     }
 
+    for (final sub in _tourActivitiesSubs.values) {
+      sub.cancel();
+    }
+
     super.onClose();
   }
 
@@ -119,8 +288,20 @@ class TouristHomeController extends GetxController {
       sub.cancel();
     }
     _tourEndedSubs.clear();
+
+    for (final sub in _tourActivitiesSubs.values) {
+      sub.cancel();
+    }
+    _tourActivitiesSubs.clear();
+
     _lastEndedByTourId.clear();
     _tourEndedNotified.clear();
+
+    ratePromptTourId.value = null;
+    _scheduledRatePrompts.clear();
+    ratedByTourId.clear();
+    _bookingCompletedByTourId.clear();
+    _initRatePromptForUser(user?.uid);
 
     totalPoints.value = 0;
     rewardsPoints.value = 0;
@@ -146,7 +327,34 @@ class TouristHomeController extends GetxController {
         .doc(user.uid)
         .collection('upcomingBookings')
         .snapshots()
-        .listen((_) {
+        .listen((snap) {
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final status =
+            (data['status'] ?? '').toString().trim().toLowerCase();
+        if (status != 'completed') continue;
+        final tourId = (data['tourId'] ?? doc.id).toString().trim();
+        if (tourId.isEmpty) continue;
+        final bookingSessionId =
+            ((data['endedSessionId'] ?? data['sessionId']) ?? '')
+                .toString()
+                .trim();
+        final completionKey = bookingSessionId.isEmpty
+            ? tourId
+            : '$tourId|$bookingSessionId';
+        if (!_bookingCompletedByTourId.contains(completionKey)) {
+          _bookingCompletedByTourId.add(completionKey);
+          _maybeAwardTourCompletionAndNotify(
+            tourId,
+            sessionId: bookingSessionId.isEmpty ? null : bookingSessionId,
+            requireLiveEnded: false,
+          );
+        }
+        _scheduleRatePrompt(
+          tourId,
+          sessionId: bookingSessionId.isEmpty ? null : bookingSessionId,
+        );
+      }
       loadCurrentTours(showCompletionSnackbars: false);
     });
 
@@ -167,6 +375,78 @@ class TouristHomeController extends GetxController {
     await loadUserInterests();
     loadTours();
     await loadCurrentTours();
+  }
+
+  void _applyActivitiesFromTourData(
+    String tourId,
+    Map<String, dynamic> tourData,
+  ) {
+    final activities = (tourData['activities'] as List<dynamic>?) ?? <dynamic>[];
+    final completedIds =
+        (completedActivityIdsByTourId[tourId] ?? const <String>[]).toSet();
+
+    final List<Map<String, dynamic>> markers = <Map<String, dynamic>>[];
+    final List<Map<String, dynamic>> loadedActivities = <Map<String, dynamic>>[];
+
+    var activityIndex = 0;
+    for (final a in activities) {
+      activityIndex++;
+      final m = (a as Map).cast<String, dynamic>();
+
+      var activityId = (m['activityId'] ?? '').toString().trim();
+      if (activityId.isEmpty) {
+        activityId = '${tourId}activity$activityIndex';
+      }
+
+      final lat = _toDouble(m['latitude']);
+      final lng = _toDouble(m['longitude']);
+      final isCompleted = completedIds.contains(activityId);
+
+      loadedActivities.add({
+        'activityId': activityId,
+        'title': (m['activityName'] ?? '').toString(),
+        'question': (m['question'] ?? '').toString(),
+        'options': (m['answerOptions'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            <String>[],
+        'latitude': lat,
+        'longitude': lng,
+        'isCompleted': isCompleted,
+        'photoChallengeEnabled': (m['photoChallengeEnabled'] as bool?) ?? false,
+        'photoChallengeText': (m['photoChallengeText'] ?? '').toString(),
+      });
+
+      if (lat != null && lng != null) {
+        markers.add({
+          'activityId': activityId,
+          'title': (m['activityName'] ?? '').toString(),
+          'position': LatLng(lat, lng),
+          'question': (m['question'] ?? '').toString(),
+          'options': (m['answerOptions'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              <String>[],
+          'isCompleted': isCompleted,
+          'photoChallengeEnabled': (m['photoChallengeEnabled'] as bool?) ?? false,
+          'photoChallengeText': (m['photoChallengeText'] ?? '').toString(),
+        });
+      }
+    }
+
+    if (markers.isNotEmpty) {
+      final center = markers.first['position'] as LatLng;
+      mapCenterByTourId[tourId] = center;
+      mapCenter.value = center;
+    }
+
+    tourActivitiesByTourId[tourId] = loadedActivities;
+    activityMapMarkersByTourId[tourId] = markers;
+
+    if (activeTourId.value == tourId) {
+      tourActivities.assignAll(loadedActivities);
+      activityMapMarkers.assignAll(markers);
+    }
   }
 
   void _applyLevelSummary(int points) {
@@ -662,26 +942,145 @@ class TouristHomeController extends GetxController {
 
       final List<Map<String, dynamic>> loaded = [];
 
+      final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>> docsByTourId =
+          <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
+
       for (final doc in bookingsSnapshot.docs) {
+        final data = doc.data();
+        final tourId = (data['tourId'] ?? doc.id).toString().trim();
+        if (tourId.isEmpty) continue;
+        (docsByTourId[tourId] ??= <QueryDocumentSnapshot<Map<String, dynamic>>>[])
+            .add(doc);
+      }
+
+      DateTime readBookingTime(Map<String, dynamic> data) {
+        final bookedAt = data['bookedAt'];
+        if (bookedAt is Timestamp) return bookedAt.toDate();
+        final serverCreatedAt = data['serverCreatedAt'];
+        if (serverCreatedAt is Timestamp) return serverCreatedAt.toDate();
+        final createdAt = data['createdAt'];
+        if (createdAt is Timestamp) return createdAt.toDate();
+        return DateTime.fromMillisecondsSinceEpoch(0);
+      }
+
+      final List<QueryDocumentSnapshot<Map<String, dynamic>>> keptDocs =
+          <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+
+      for (final entry in docsByTourId.entries) {
+        final docs = entry.value;
+        docs.sort((a, b) {
+          final at = readBookingTime(a.data());
+          final bt = readBookingTime(b.data());
+          return at.compareTo(bt);
+        });
+
+        final keep = docs.isEmpty ? null : docs.last;
+        if (keep != null) {
+          keptDocs.add(keep);
+        }
+
+        if (docs.length > 1) {
+          for (final d in docs.take(docs.length - 1)) {
+            try {
+              await d.reference.delete();
+            } catch (e) {
+              Get.log('UpcomingBookings: failed to delete duplicate: $e');
+            }
+          }
+        }
+      }
+
+      for (final doc in keptDocs) {
         final data = doc.data();
 
         final tourId = (data['tourId'] ?? doc.id).toString();
         final title = (data['tourTitle'] ?? '').toString();
         final date = (data['availableDates'] ?? '').toString();
 
+        final status = (data['status'] ?? 'Upcoming').toString().trim();
+        final bookingSessionId = (data['sessionId'] ?? '').toString().trim();
+        tourSessionIdByTourId[tourId] = bookingSessionId;
+
         final tourDoc = await FirebaseFirestore.instance
             .collection('tourPackages')
             .doc(tourId)
             .get();
 
-        if (!tourDoc.exists) continue;
+        if (!tourDoc.exists) {
+          try {
+            await doc.reference.delete();
+          } catch (_) {}
+          continue;
+        }
 
         final tourData = tourDoc.data() as Map<String, dynamic>;
         final activities = (tourData['activities'] as List<dynamic>?) ?? [];
 
+        try {
+          final ratingSnap = await FirebaseFirestore.instance
+              .collection('tourPackages')
+              .doc(tourId)
+              .collection('ratings')
+              .doc(user.uid)
+              .get();
+          ratedByTourId[tourId] = ratingSnap.exists;
+          if (ratingSnap.exists) {
+            _markRatePromptShown(tourId);
+          }
+        } catch (_) {}
+
+        final hasAnyLocation = activities.any((a) {
+          if (a is! Map) return false;
+          final m = a.cast<String, dynamic>();
+          final lat = (m['latitude'] as num?)?.toDouble();
+          final lng = (m['longitude'] as num?)?.toDouble();
+          return lat != null &&
+              lng != null &&
+              lat.isFinite &&
+              lng.isFinite;
+        });
+        if (!hasAnyLocation) {
+          try {
+            await doc.reference.delete();
+          } catch (_) {}
+          expandedTourIds.remove(tourId);
+          autoFittedTourIds.remove(tourId);
+          if (activeTourId.value == tourId) {
+            activeTourId.value = '';
+          }
+          continue;
+        }
+
+        // Ensure activities/markers are available immediately (even before
+        // snapshot listeners deliver their first event).
+        _applyActivitiesFromTourData(tourId, tourData);
+
         final live = tourData['liveTourState'] as Map<String, dynamic>?;
-        final ended = (live?['ended'] as bool?) ?? false;
+        final ended = _isLiveEndedForBooking(live, bookingSessionId);
         tourEndedByTourId[tourId] = ended;
+
+        final isCompletedBooking = status.toLowerCase() == 'completed';
+
+        if (ended && !isCompletedBooking) {
+          try {
+            await doc.reference.set(
+              {
+                'status': 'Completed',
+                'completedAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              },
+              SetOptions(merge: true),
+            );
+          } catch (_) {}
+        }
+
+        if (isCompletedBooking) {
+          continue;
+        }
+
+        if (ended) {
+          continue;
+        }
 
         String guideName = '';
         final guideId = (tourData['guideId'] ?? '').toString();
@@ -708,6 +1107,33 @@ class TouristHomeController extends GetxController {
 
         for (final a in quizAttemptsSnap.docs) {
           final attemptData = a.data();
+          if (bookingSessionId.isNotEmpty) {
+            final attemptSession = (attemptData['sessionId'] ?? '').toString().trim();
+            if (attemptSession != bookingSessionId) {
+              continue;
+            }
+          }
+          pointsEarned += (attemptData['pointsEarned'] as num?)?.toInt() ?? 0;
+          final activityId = (attemptData['activityId'] ?? '').toString();
+          if (activityId.isNotEmpty) completedIds.add(activityId);
+        }
+
+        final challengeAttemptsSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('challenge_attempts')
+            .where('packageId', isEqualTo: tourId)
+            .get();
+
+        for (final a in challengeAttemptsSnap.docs) {
+          final attemptData = a.data();
+          if (bookingSessionId.isNotEmpty) {
+            final attemptSession =
+                (attemptData['sessionId'] ?? '').toString().trim();
+            if (attemptSession != bookingSessionId) {
+              continue;
+            }
+          }
           pointsEarned += (attemptData['pointsEarned'] as num?)?.toInt() ?? 0;
           final activityId = (attemptData['activityId'] ?? '').toString();
           if (activityId.isNotEmpty) completedIds.add(activityId);
@@ -723,6 +1149,13 @@ class TouristHomeController extends GetxController {
 
           for (final evDoc in eventsSnap.docs) {
             final ev = evDoc.data();
+            if (bookingSessionId.isNotEmpty) {
+              final evType = (ev['type'] ?? '').toString().trim();
+              final evSession = (ev['sessionId'] ?? '').toString().trim();
+              if (evType != 'rating' && evSession != bookingSessionId) {
+                continue;
+              }
+            }
             pointsEarned += (ev['pointsEarned'] as num?)?.toInt() ?? 0;
           }
         } catch (_) {}
@@ -737,11 +1170,22 @@ class TouristHomeController extends GetxController {
           'pointsEarned': pointsEarned,
           'ended': ended,
           'rated': ratedByTourId[tourId] ?? false,
+          'sessionId': bookingSessionId,
         });
       }
 
       if (seq != _currentToursLoadSeq) return;
       currentTours.assignAll(loaded);
+
+      if (loaded.isNotEmpty) {
+        final firstId = (loaded.first['tourId'] ?? '').toString();
+        final active = activeTourId.value.trim();
+        if (active.isEmpty || !loaded.any((t) => (t['tourId'] ?? '') == active)) {
+          activeTourId.value = firstId;
+          tourActivities.assignAll(tourActivitiesByTourId[firstId] ?? const <Map<String, dynamic>>[]);
+          activityMapMarkers.assignAll(activityMapMarkersByTourId[firstId] ?? const <Map<String, dynamic>>[]);
+        }
+      }
 
       final totalCompleted = loaded.fold<int>(
         0,
@@ -762,8 +1206,42 @@ class TouristHomeController extends GetxController {
             .where((id) => id.isNotEmpty)
             .toSet(),
       );
+
+      _syncTourActivitiesListeners(
+        loaded
+            .map((t) => (t['tourId'] ?? '').toString())
+            .where((id) => id.isNotEmpty)
+            .toSet(),
+      );
     } catch (_) {
       Get.snackbar('Error', 'Failed to load current tours');
+    }
+  }
+
+  void _syncTourActivitiesListeners(Set<String> tourIds) {
+    final toRemove = _tourActivitiesSubs.keys
+        .where((id) => !tourIds.contains(id))
+        .toList();
+
+    for (final id in toRemove) {
+      _tourActivitiesSubs.remove(id)?.cancel();
+    }
+
+    for (final tourId in tourIds) {
+      if (_tourActivitiesSubs.containsKey(tourId)) continue;
+
+      final sub = FirebaseFirestore.instance
+          .collection('tourPackages')
+          .doc(tourId)
+          .snapshots()
+          .listen((snap) {
+        if (!snap.exists) return;
+        final data = snap.data();
+        if (data == null) return;
+        _applyActivitiesFromTourData(tourId, data);
+      });
+
+      _tourActivitiesSubs[tourId] = sub;
     }
   }
 
@@ -792,33 +1270,116 @@ class TouristHomeController extends GetxController {
         if (data == null) return;
 
         final live = data['liveTourState'] as Map<String, dynamic>?;
-        final ended = (live?['ended'] as bool?) ?? false;
+        final safeSessionId =
+            (tourSessionIdByTourId[tourId] ?? '').toString().trim();
+        final ended = _isLiveEndedForBooking(live, safeSessionId);
         final previous = _lastEndedByTourId[tourId] ?? false;
         _lastEndedByTourId[tourId] = ended;
 
-        if (!ended || previous == ended) return;
-        if (_tourEndedNotified.contains(tourId)) return;
+        if (!ended) return;
 
-        _tourEndedNotified.add(tourId);
+        if (previous == ended) {
+          return;
+        }
 
-        await _maybeAwardTourCompletionAndNotify(tourId);
+        final completionKey = safeSessionId.isEmpty
+            ? tourId
+            : '${tourId}|$safeSessionId';
+
+        if (_tourEndedNotified.contains(completionKey)) return;
+
+        _tourEndedNotified.add(completionKey);
+
+        tourEndedByTourId[tourId] = true;
+
+        await loadCurrentTours(showCompletionSnackbars: false);
+
+        final totalCompleted = currentTours.fold<int>(
+          0,
+          (sum, item) => sum + ((item['completedActivities'] as int?) ?? 0),
+        );
+
+        final totalAll = currentTours.fold<int>(
+          0,
+          (sum, item) => sum + ((item['totalActivities'] as int?) ?? 0),
+        );
+
+        completedActivities.value = totalCompleted;
+        totalActivities.value = totalAll;
+
+        _syncTourEndedListeners(
+          currentTours
+              .map((t) => (t['tourId'] ?? '').toString())
+              .where((id) => id.isNotEmpty)
+              .toSet(),
+        );
+
+        _syncTourActivitiesListeners(
+          currentTours
+              .map((t) => (t['tourId'] ?? '').toString())
+              .where((id) => id.isNotEmpty)
+              .toSet(),
+        );
       });
 
       _tourEndedSubs[tourId] = sub;
     }
   }
 
-  Future<void> _maybeAwardTourCompletionAndNotify(String tourId) async {
+  Future<void> _maybeAwardTourCompletionAndNotify(
+    String tourId, {
+    String? sessionId,
+    bool requireLiveEnded = true,
+  }) async {
   try {
-    final earned =
-        await _gamificationService.awardTourCompletionPoints(packageId: tourId);
+    final earned = await _gamificationService.awardTourCompletionPoints(
+      packageId: tourId,
+      sessionId: sessionId,
+      requireLiveEnded: requireLiveEnded,
+    );
+
+    try {
+      await _packagesService.notifyGuideTourCompleted(
+        packageId: tourId,
+        pointsEarned: earned,
+        sessionId: sessionId,
+      );
+    } catch (_) {}
 
     if (earned > 0) {
-      Get.snackbar(
-        'Reward',
-        'Thank you for completing the tour you earned +$earned',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      final key = _tourSessionKey(tourId, sessionId);
+      _pendingTourCompletionPointsByKey[key] = earned;
+
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final cleanSessionId = (sessionId ?? '').toString().trim();
+          final notifId = cleanSessionId.isEmpty
+              ? 'tour_completion_points_$tourId'
+              : 'tour_completion_points_${tourId}_$cleanSessionId';
+
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('notifications')
+              .doc(notifId)
+              .set({
+            'type': 'tour_completion_points',
+            'title': 'Points Added',
+            'message': 'You earned +$earned points for completing the tour',
+            'isRead': false,
+            'createdAt': Timestamp.now(),
+            'serverCreatedAt': FieldValue.serverTimestamp(),
+            'tourId': tourId,
+            if (cleanSessionId.isNotEmpty) 'sessionId': cleanSessionId,
+            'pointsEarned': earned,
+          }, SetOptions(merge: true));
+        }
+      } catch (_) {}
+
+      if ((ratedByTourId[tourId] ?? false) == true) {
+        _scheduleTourCompletionPointsAfterRating(tourId, sessionId: sessionId);
+      }
     }
 
     ///  Explorer Badge 
@@ -851,9 +1412,32 @@ class TouristHomeController extends GetxController {
   } catch (_) {}
 }
 
+  void toggleTourExpanded(String tourId) {
+    if (tourId.isEmpty) return;
+
+    if (expandedTourIds.contains(tourId)) {
+      expandedTourIds.remove(tourId);
+      autoFittedTourIds.remove(tourId);
+      if (activeTourId.value == tourId) {
+        activeTourId.value = '';
+      }
+      return;
+    }
+
+    expandedTourIds.add(tourId);
+    activeTourId.value = tourId;
+    loadTourActivities(
+      tourId,
+      sessionId: (tourSessionIdByTourId[tourId] ?? '').toString().trim().isEmpty
+          ? null
+          : (tourSessionIdByTourId[tourId] ?? '').toString().trim(),
+    );
+  }
+
   Future<void> loadTourActivities(
     String tourId, {
     bool showCompletionSnackbars = true,
+    String? sessionId,
   }) async {
     try {
       activeTourId.value = tourId;
@@ -872,6 +1456,7 @@ class TouristHomeController extends GetxController {
       final Set<String> completedIds = <String>{};
 
       if (user != null) {
+        final safeSessionId = (sessionId ?? '').toString().trim();
         final attemptsSnap = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -881,6 +1466,34 @@ class TouristHomeController extends GetxController {
 
         for (final a in attemptsSnap.docs) {
           final attemptData = a.data();
+          if (safeSessionId.isNotEmpty) {
+            final attemptSession = (attemptData['sessionId'] ?? '').toString().trim();
+            if (attemptSession != safeSessionId) {
+              continue;
+            }
+          }
+          final activityId = (attemptData['activityId'] ?? '').toString();
+          if (activityId.isNotEmpty) {
+            completedIds.add(activityId);
+          }
+        }
+
+        final challengeAttemptsSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('challenge_attempts')
+            .where('packageId', isEqualTo: tourId)
+            .get();
+
+        for (final a in challengeAttemptsSnap.docs) {
+          final attemptData = a.data();
+          if (safeSessionId.isNotEmpty) {
+            final attemptSession =
+                (attemptData['sessionId'] ?? '').toString().trim();
+            if (attemptSession != safeSessionId) {
+              continue;
+            }
+          }
           final activityId = (attemptData['activityId'] ?? '').toString();
           if (activityId.isNotEmpty) {
             completedIds.add(activityId);
@@ -990,22 +1603,6 @@ class TouristHomeController extends GetxController {
     }
   }
 
-  void setSelectedActivityIndex(int index) {
-    if (index < 0) return;
-    selectedActivityIndex.value = index;
-  }
-
-  void toggleTourExpanded(String tourId) {
-    if (expandedTourIds.contains(tourId)) {
-      expandedTourIds.remove(tourId);
-      autoFittedTourIds.remove(tourId);
-    } else {
-      expandedTourIds.add(tourId);
-      activeTourId.value = tourId;
-      loadTourActivities(tourId);
-    }
-  }
-
   Future<void> submitTourRating({
     required String tourId,
     required int rating,
@@ -1020,7 +1617,47 @@ class TouristHomeController extends GetxController {
     ratedByTourId[tourId] = true;
 
     try {
-      await _gamificationService.awardRatingPoints(packageId: tourId);
+      final safeSessionId = (tourSessionIdByTourId[tourId] ?? '').toString().trim();
+      final earned = await _gamificationService.awardRatingPoints(
+        packageId: tourId,
+        sessionId: safeSessionId.isEmpty ? null : safeSessionId,
+      );
+
+      if (earned > 0) {
+        Get.snackbar(
+          'Thank you',
+          '+$earned points — thanks for your rating',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        try {
+          final userId = FirebaseAuth.instance.currentUser!.uid;
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('notifications')
+              .doc('rating_points_$tourId')
+              .set({
+            'type': 'rating_points',
+            'title': 'Points Added',
+            'message': 'You earned +$earned points for rating this tour',
+            'isRead': false,
+            'createdAt': Timestamp.now(),
+            'serverCreatedAt': FieldValue.serverTimestamp(),
+            'tourId': tourId,
+            if (safeSessionId.isNotEmpty) 'sessionId': safeSessionId,
+            'pointsEarned': earned,
+          }, SetOptions(merge: true));
+        } catch (_) {}
+      }
+
+      await _ensurePendingTourCompletionPoints(
+        tourId,
+        sessionId: safeSessionId.isEmpty ? null : safeSessionId,
+      );
+      _scheduleTourCompletionPointsAfterRating(
+        tourId,
+        sessionId: safeSessionId.isEmpty ? null : safeSessionId,
+      );
       final userId = FirebaseAuth.instance.currentUser!.uid;
       await FirebaseFirestore.instance
     .collection('users')
@@ -1038,6 +1675,10 @@ class TouristHomeController extends GetxController {
     snackPosition: SnackPosition.BOTTOM,
   );
 }
+    } catch (_) {}
+
+    try {
+      Get.find<TouristProfileController>().refreshCompletedTours();
     } catch (_) {}
 
     await loadCurrentTours();

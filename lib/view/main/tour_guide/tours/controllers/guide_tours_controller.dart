@@ -216,14 +216,16 @@ class GuideToursController extends GetxController {
     final startedAt = _sessionStartedAtByTourId[tourId];
     final docs = snap.docs;
 
-    if (startedAt == null) {
-      registeredCountByTourId[tourId] = docs.length;
-      return;
-    }
-
     var count = 0;
     for (final d in docs) {
       final data = d.data();
+      final status =
+          (data['status'] ?? '').toString().trim().toLowerCase();
+      if (status == 'completed') continue;
+      if (startedAt == null) {
+        count++;
+        continue;
+      }
       final bookedAt = data['bookedAt'];
       if (bookedAt is Timestamp) {
         if (bookedAt.compareTo(startedAt) >= 0) {

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:tour_app/services/packages_service.dart';
 
 class LevelConfig {
   final int level;
@@ -94,6 +95,16 @@ class GamificationService extends GetxService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
+  bool _asBool(dynamic v) {
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    if (v is String) {
+      final s = v.trim().toLowerCase();
+      return s == 'true' || s == '1' || s == 'yes';
+    }
+    return false;
+  }
+
   String _normalizeAnswer(String v) => v.trim().toLowerCase();
 
   LevelConfig getLevelFromPoints(int points) {
@@ -175,7 +186,7 @@ class GamificationService extends GetxService {
 
       final userSnap = await tx.get(userRef);
       final Map<String, dynamic> userData =
-          (userSnap.data() as Map<String, dynamic>?) ?? <String, dynamic>{};
+          userSnap.data() ?? <String, dynamic>{};
       final currentPoints = (userData['totalPoints'] as num?)?.toInt() ?? 0;
       final newTotalPoints = currentPoints + points;
 
@@ -222,9 +233,10 @@ class GamificationService extends GetxService {
     });
   }
 
-  Future<int> awardBookingPoints({required String packageId}) {
+  Future<int> awardBookingPoints({required String packageId, String? sessionId}) {
+    final eventId = 'booking_$packageId';
     return _awardOnce(
-      eventId: 'booking_$packageId',
+      eventId: eventId,
       points: 10,
       eventData: {
         'type': 'booking',
@@ -244,18 +256,24 @@ class GamificationService extends GetxService {
     );
   }
 
-  Future<int> awardRatingPoints({required String packageId}) {
+  Future<int> awardRatingPoints({required String packageId, String? sessionId}) {
+    final cleanSessionId = (sessionId ?? '').toString().trim();
     return _awardOnce(
       eventId: 'rating_$packageId',
       points: 5,
       eventData: {
         'type': 'rating',
         'packageId': packageId,
+        if (cleanSessionId.isNotEmpty) 'sessionId': cleanSessionId,
       },
     );
   }
 
-  Future<int> awardTourCompletionPoints({required String packageId}) async {
+  Future<int> awardTourCompletionPoints({
+    required String packageId,
+    String? sessionId,
+    bool requireLiveEnded = true,
+  }) async {
     final tourSnap =
         await _firestore.collection('tourPackages').doc(packageId).get();
     if (!tourSnap.exists) {
@@ -264,17 +282,31 @@ class GamificationService extends GetxService {
 
     final data = tourSnap.data();
     final live = data?['liveTourState'] as Map<String, dynamic>?;
-    final ended = (live?['ended'] as bool?) ?? false;
-    if (!ended) {
-      return 0;
+    final cleanSessionId = (sessionId ?? '').toString().trim();
+    if (requireLiveEnded) {
+      final ended = _asBool(live?['ended']);
+      if (!ended) {
+        return 0;
+      }
+      final liveSessionId = (live?['sessionId'] ?? '').toString().trim();
+      if (liveSessionId.isNotEmpty &&
+          cleanSessionId.isNotEmpty &&
+          liveSessionId != cleanSessionId) {
+        return 0;
+      }
     }
 
+    final eventId = cleanSessionId.isEmpty
+        ? 'tour_complete_$packageId'
+        : 'tour_complete_${packageId}_$cleanSessionId';
+
     return _awardOnce(
-      eventId: 'tour_complete_$packageId',
+      eventId: eventId,
       points: 20,
-      eventData: {
+      eventData: <String, dynamic>{
         'type': 'tour_completion',
         'packageId': packageId,
+        if (cleanSessionId.isNotEmpty) 'sessionId': cleanSessionId,
       },
     );
   }
@@ -413,7 +445,7 @@ class GamificationService extends GetxService {
 
     await _firestore.runTransaction((tx) async {
       final snap = await tx.get(userRef);
-      final data = (snap.data() as Map<String, dynamic>?) ?? <String, dynamic>{};
+      final data = snap.data() ?? <String, dynamic>{};
       final current = (data['totalPoints'] as num?)?.toInt() ?? 0;
       final currentLevel = (data['level'] ?? '').toString();
 
@@ -518,13 +550,17 @@ class GamificationService extends GetxService {
     required String packageId,
     required String activityId,
     required XFile photo,
+    String? sessionId,
   }) async {
     final userId = currentUserId;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
-    final locationId = '${packageId}_$activityId';
+    final safeSessionId = (sessionId ?? '').toString().trim();
+    final locationId = safeSessionId.isEmpty
+        ? '${packageId}_$activityId'
+        : '${packageId}_${activityId}_$safeSessionId';
 
     final userRef = _firestore.collection('users').doc(userId);
     final attemptRef = userRef.collection('challenge_attempts').doc(locationId);
@@ -567,7 +603,7 @@ class GamificationService extends GetxService {
 
         final userSnap = await tx.get(userRef);
         final userData =
-            (userSnap.data() as Map<String, dynamic>?) ?? <String, dynamic>{};
+            userSnap.data() ?? <String, dynamic>{};
         final currentPoints = (userData['totalPoints'] as num?)?.toInt() ?? 0;
         final newTotalPoints = currentPoints + pointsToAward;
 
@@ -601,6 +637,7 @@ class GamificationService extends GetxService {
           'packageId': packageId,
           'activityId': activityId,
           'locationId': locationId,
+          if (safeSessionId.isNotEmpty) 'sessionId': safeSessionId,
           'photoUrl': url,
           'storagePath': storagePath,
           'pointsEarned': pointsToAward,
@@ -631,19 +668,23 @@ class GamificationService extends GetxService {
     required String packageId,
     required String activityId,
     required String answer,
+    String? sessionId,
   }) async {
     final userId = currentUserId;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
-    final locationId = '${packageId}_$activityId';
+    final safeSessionId = (sessionId ?? '').toString().trim();
+    final locationId = safeSessionId.isEmpty
+        ? '${packageId}_$activityId'
+        : '${packageId}_${activityId}_$safeSessionId';
 
     final userRef = _firestore.collection('users').doc(userId);
     final attemptRef = userRef.collection('quiz_attempts').doc(locationId);
     final packageRef = _firestore.collection('tourPackages').doc(packageId);
 
-    return _firestore.runTransaction((tx) async {
+    final result = await _firestore.runTransaction((tx) async {
       final attemptSnap = await tx.get(attemptRef);
       if (attemptSnap.exists) {
         return const SubmitQuizAnswerResult(
@@ -695,7 +736,7 @@ class GamificationService extends GetxService {
 
       final userSnap = await tx.get(userRef);
       final userData =
-          (userSnap.data() as Map<String, dynamic>?) ?? <String, dynamic>{};
+          userSnap.data() ?? <String, dynamic>{};
       final currentPoints = (userData['totalPoints'] as num?)?.toInt() ?? 0;
 
       const basePoints = 2;
@@ -734,6 +775,7 @@ class GamificationService extends GetxService {
         'packageId': packageId,
         'activityId': activityId,
         'locationId': locationId,
+        if (safeSessionId.isNotEmpty) 'sessionId': safeSessionId,
         'answer': answer,
         'correct': isCorrect,
         'correctAnswer': resolvedCorrectAnswer,
@@ -755,6 +797,19 @@ class GamificationService extends GetxService {
         isCorrect: isCorrect,
       );
     });
+
+    if (!result.alreadyAnswered && result.pointsEarned > 0) {
+      try {
+        await Get.find<PackagesService>().notifyGuideQuizAnswered(
+          packageId: packageId,
+          activityId: activityId,
+          pointsEarned: result.pointsEarned,
+          isCorrect: result.isCorrect,
+        );
+      } catch (_) {}
+    }
+
+    return result;
   }
 
  //Future<void> _triggerBadgeCheck({
@@ -804,8 +859,6 @@ Future<List<String>> checkAndUnlockBadges() async {
 
   int bookings = data['bookingCount'] ?? 0;
   int reviews = data['reviewsCount'] ?? 0;
-  int quiz = data['quizCount'] ?? 0;
-  int completed = data['completedTours'] ?? 0;
 
  List<String> newBadges = [];
 

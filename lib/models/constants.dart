@@ -2,6 +2,8 @@
 /// This file serves as the single source of truth for all enum values
 /// to ensure consistency across the entire app
 
+library;
+
 class AppConstants {
   // ==================== Saudi Destinations ====================
   static const List<String> saudiDestinations = [

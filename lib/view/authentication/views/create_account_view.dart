@@ -45,29 +45,6 @@ class CreateAccountView extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    height: 40.h,
-                    padding: EdgeInsets.symmetric(horizontal: 18.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30.r),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.language, color: Colors.black, size: 18.sp),
-                        SizedBox(width: 8.w),
-                        Text(
-                          'AR',
-                          style: GoogleFonts.inter(
-                            color: Colors.black,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

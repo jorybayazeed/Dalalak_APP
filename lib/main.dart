@@ -10,12 +10,12 @@ import 'package:tour_app/services/storage_service.dart';
 import 'package:tour_app/services/user_service.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/controllers/dashboard_controller.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
+import 'package:tour_app/view/main/tour_guide/notifications/controllers/guide_notifications_controller.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/tourist_notifications_controller.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
+import 'package:tour_app/view/main/tourist/profile/controllers/profile_controller.dart';
 import 'package:tour_app/view/onboarding/views/onboarding_view.dart';
-
-
 
 void main() async {
   
@@ -33,8 +33,10 @@ void main() async {
     Get.put(PackagesService(), permanent: true);
     Get.put(GamificationService(), permanent: true);
     Get.put(TouristHomeController(), permanent: true);
+    Get.put(TouristProfileController(), permanent: true);
 
     Get.put(DashboardController(), permanent: true);
+    Get.put(NotificationsController(), permanent: true);
     Get.put(TouristNotificationsController(), permanent: true);
 
   } catch (e, st) {
