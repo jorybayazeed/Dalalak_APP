@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:tour_app/view/main/tour_guide/completed_tours/controllers/guide_completed_tours_controller.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/controllers/dashboard_controller.dart';
 import 'package:tour_app/view/main/tour_guide/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tour_guide/profile/controllers/profile_controller.dart';
@@ -99,6 +101,7 @@ class ProfileView extends StatelessWidget {
                                 child: const Text("Edit Profile"),
                               ),
                             ),
+
                           ],
                         ),
                       ),
@@ -199,60 +202,45 @@ class ProfileView extends StatelessWidget {
                       }),
                     ),
 
-                    /// COMPLETED TOURS
+                    /// COMPLETED TOURS (from endedSessions)
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),
-                      child: Obx(() {
-                        final tours = controller.tours;
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            /// TITLE + COUNT
-                            RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: "Completed Tours ",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: "(${tours.length} Tours)",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            SizedBox(height: 12.h),
-
-                            ///   EMPTY STATE
-                            if (tours.isEmpty)
-                              SizedBox(
-                                height: 200.h,
-                                child: Center(
-                                  child: Text(
-                                    "No completed tours yet",
-                                    style: GoogleFonts.inter(fontSize: 14.sp),
+                      child: Builder(
+                        builder: (_) {
+                          final completedCtrl =
+                              Get.put(GuideCompletedToursController());
+                          return Obx(() {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Completed Tours',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black,
                                   ),
                                 ),
-                              ),
-
-                            /// LIST
-                            ...tours.map((tour) => _buildGuideTourCard(tour)),
-
-                            SizedBox(height: 24.h),
-                          ],
-                        );
-                      }),
+                                SizedBox(height: 12.h),
+                                _buildCompletedToursSummary(
+                                  completedCtrl.totalCompleted,
+                                ),
+                                SizedBox(height: 12.h),
+                                if (completedCtrl.sessions.isEmpty)
+                                  _buildCompletedToursEmpty(completedCtrl)
+                                else
+                                  ...completedCtrl.sessions.map(
+                                    (s) => _buildCompletedSessionCard(
+                                      s,
+                                      completedCtrl,
+                                    ),
+                                  ),
+                                SizedBox(height: 24.h),
+                              ],
+                            );
+                          });
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -274,192 +262,222 @@ class ProfileView extends StatelessWidget {
     );
   }
 
-  Widget _buildGuideTourCard(Map<String, dynamic> tour) {
-    final guideController = Get.find<GuideToursController>();
-
-    final id = (tour['id'] ?? '').toString();
-    final title = (tour['title'] ?? '').toString();
-    final destination = (tour['destination'] ?? '').toString();
-
-    return GestureDetector(
-      onTap: () {
-        if (id.isEmpty) return;
-
-        Get.dialog(_TourRatingsDialog(tourId: id, tourTitle: title));
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16.h),
-        padding: EdgeInsets.all(16.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.inter(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-
-            SizedBox(height: 6.h),
-
-            Text(
-              destination,
-              style: GoogleFonts.inter(
-                color: const Color(0xFF666666),
-                fontSize: 12.sp,
-              ),
-            ),
-
-            SizedBox(height: 10.h),
-
-            Obx(() {
-              final avg = guideController.averageRatingByTourId[id] ?? 0.0;
-              final count = guideController.ratingsCountByTourId[id] ?? 0;
-
-              return Row(
-                children: [
-                  Icon(Icons.star, size: 18.sp, color: const Color(0xFFFFC107)),
-                  SizedBox(width: 6.w),
-                  Text(
-                    count == 0
-                        ? 'No ratings yet'
-                        : '${avg.toStringAsFixed(1)} ($count)',
-                  ),
-                ],
-              );
-            }),
-
-            SizedBox(height: 12.h),
-
-            Row(
-              children: [
-                Icon(Icons.people, size: 18.sp),
-                SizedBox(width: 6.w),
-                Obx(() {
-                  final count =
-                      guideController.registeredCountByTourId[id] ?? 0;
-                  return Text('$count registered');
-                }),
-              ],
-            ),
-          ],
-        ),
+  Widget _buildCompletedToursSummary(int total) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFF00A86B),
+        borderRadius: BorderRadius.circular(12.r),
       ),
-    );
-  }
-}
-
-class _TourRatingsDialog extends StatelessWidget {
-  const _TourRatingsDialog({required this.tourId, required this.tourTitle});
-
-  final String tourId;
-  final String tourTitle;
-
-  Widget _buildStars({required int rating}) {
-    return Row(
-      children: List.generate(
-        5,
-        (i) => Icon(
-          i < rating ? Icons.star : Icons.star_border,
-          size: 16,
-          color: const Color(0xFFFFC107),
-        ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(10.w),
+            decoration: const BoxDecoration(
+              color: Colors.white24,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.check_circle, color: Colors.white, size: 24.sp),
+          ),
+          SizedBox(width: 14.w),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Total Completed Tours',
+                style: GoogleFonts.inter(
+                  color: Colors.white70,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                '$total',
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<GuideToursController>();
-
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-      child: Padding(
-        padding: EdgeInsets.all(16.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Ratings",
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16.sp,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Get.back(),
-                  child: const Icon(Icons.close),
-                ),
-              ],
+  Widget _buildCompletedToursEmpty(GuideCompletedToursController controller) {
+    return Container(
+      padding: EdgeInsets.all(28.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 36.sp,
+            color: const Color(0xFFBDBDBD),
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            'No completed tours yet',
+            style: GoogleFonts.inter(
+              color: const Color(0xFF999999),
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
             ),
-
-            SizedBox(height: 8.h),
-
-            Text(
-              tourTitle,
-              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            'If you ended tours before this update, tap below to restore them.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: const Color(0xFF999999),
+              fontSize: 12.sp,
             ),
-
-            SizedBox(height: 12.h),
-
-            Obx(() {
-              final ratings = controller.ratingsByTourId[tourId] ?? [];
-
-              if (ratings.isEmpty) {
-                return const Text('No ratings yet');
-              }
-
-              return Column(
-                children: ratings.map((r) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            r['userName'] ?? '',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13.sp,
-                            ),
-                          ),
-                          _buildStars(
-                            rating: (r['rating'] as num?)?.toInt() ?? 0,
-                          ),
-                        ],
-                      ),
-
-                      SizedBox(height: 4.h),
-
-                      Text(
-                        r['review'] ?? '',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.sp,
-                          color: Colors.grey[700],
+          ),
+          SizedBox(height: 14.h),
+          Obx(() {
+            final busy = controller.isBackfilling.value;
+            return SizedBox(
+              height: 40.h,
+              child: ElevatedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final created = await controller.restoreHistory();
+                        Get.snackbar(
+                          'Restore History',
+                          created > 0
+                              ? 'Restored $created past tour${created == 1 ? '' : 's'}.'
+                              : 'No past tours found to restore.',
+                          snackPosition: SnackPosition.BOTTOM,
+                        );
+                      },
+                icon: busy
+                    ? SizedBox(
+                        width: 14.w,
+                        height: 14.w,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
-                      ),
-
-                      const Divider(),
-                    ],
-                  );
-                }).toList(),
-              );
-            }),
-          ],
-        ),
+                      )
+                    : Icon(Icons.history, size: 16.sp, color: Colors.white),
+                label: Text(
+                  busy ? 'Restoring...' : 'Restore History',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00A86B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
+
+  Widget _buildCompletedSessionCard(
+    Map<String, dynamic> s,
+    GuideCompletedToursController controller,
+  ) {
+    final title = (s['packageTitle'] ?? '').toString().isEmpty
+        ? 'Untitled tour'
+        : s['packageTitle'].toString();
+    final endedRelative = controller.formatRelative(s['endedAt']);
+    final registered = (s['registeredCount'] as int?) ?? 0;
+    final rating = (s['rating'] as num?)?.toDouble() ?? 0.0;
+    final reviews = (s['reviews'] as int?) ?? 0;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (endedRelative.isNotEmpty)
+                Text(
+                  endedRelative,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF999999),
+                    fontSize: 11.sp,
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              _buildCompletedStat(
+                icon: Icons.people_outline,
+                label: '$registered registered',
+                color: const Color(0xFF1565C0),
+              ),
+              SizedBox(width: 12.w),
+              _buildCompletedStat(
+                icon: Icons.star,
+                label: rating > 0
+                    ? '${rating.toStringAsFixed(1)} ($reviews)'
+                    : 'No ratings',
+                color: rating > 0 ? Colors.amber : const Color(0xFF999999),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletedStat({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16.sp, color: color),
+        SizedBox(width: 4.w),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            color: const Color(0xFF333333),
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
 }
 
 Widget _simpleRow({required String title, required String value}) {

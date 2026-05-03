@@ -12,6 +12,10 @@ class NotificationsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(NotificationsController());
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.markAllAsRead();
+    });
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(

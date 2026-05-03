@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/services/user_service.dart';
 import 'package:tour_app/view/main/tourist/profile/views/edit_profile_view.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
@@ -8,6 +10,7 @@ import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart
 class TouristProfileController extends GetxController {
   final RxString selectedTab = 'Completed Tours'.obs;
   final UserService _userService = Get.find<UserService>();
+  final PackagesService _packagesService = Get.find<PackagesService>();
 
   final RxMap<String, dynamic> userData = <String, dynamic>{}.obs;
 
@@ -25,13 +28,32 @@ class TouristProfileController extends GetxController {
   StreamSubscription<Map<String, dynamic>?>? _userDataSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _savedToursSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _completedToursSub;
+  StreamSubscription<User?>? _authSub;
 
   @override
   void onInit() {
     super.onInit();
+
     listenToUserData();
+
+    _authSub?.cancel();
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((_) {
+      listenToUserData();
+      listenToSavedTours();
+      listenToCompletedTours();
+    });
+
     listenToSavedTours();
     listenToCompletedTours();
+  }
+
+  @override
+  void onClose() {
+    _userDataSub?.cancel();
+    _savedToursSub?.cancel();
+    _completedToursSub?.cancel();
+    _authSub?.cancel();
+    super.onClose();
   }
 
   void listenToUserData() {
@@ -62,6 +84,8 @@ class TouristProfileController extends GetxController {
     final userId = _userService.currentUserId;
 
     if (userId == null || userId.isEmpty) {
+      _savedToursSub?.cancel();
+      _savedToursSub = null;
       savedToursList.clear();
       savedTours.value = 0;
       return;
@@ -122,6 +146,8 @@ class TouristProfileController extends GetxController {
     final userId = _userService.currentUserId;
 
     if (userId == null || userId.isEmpty) {
+      _completedToursSub?.cancel();
+      _completedToursSub = null;
       completedTours.clear();
       toursCompleted.value = 0;
       return;
@@ -174,11 +200,14 @@ class TouristProfileController extends GetxController {
           completionDate = '${dt.month}/${dt.day}/${dt.year}';
         }
 
+        final userRating = await _packagesService.getMyRatingFor(tourDoc.id);
+
         loaded.add({
           'id': tourDoc.id,
           'title': tourData['tourTitle'] ?? '',
           'guide': guideName,
           'rating': rating,
+          'userRating': userRating,
           'completionDate': completionDate,
           'image': tourData['image'] ?? '',
         });
@@ -187,6 +216,10 @@ class TouristProfileController extends GetxController {
       completedTours.assignAll(loaded);
       toursCompleted.value = loaded.length;
     });
+  }
+
+  Future<void> refreshCompletedTours() async {
+    listenToCompletedTours();
   }
 
   void changeTab(String tab) {

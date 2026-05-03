@@ -9,6 +9,12 @@ class PackageDetailsController extends GetxController {
   final RxMap<String, dynamic> packageData = <String, dynamic>{}.obs;
   final RxString guideName = ''.obs;
   final RxString guideImage = ''.obs;
+  final RxString guidePhone = ''.obs;
+  final RxString guideYearsOfExperience = ''.obs;
+  final RxString guideSpecialization = ''.obs;
+  final RxList<String> guideLanguages = <String>[].obs;
+  final RxDouble guideRating = 0.0.obs;
+  final RxInt guideTotalReviews = 0.obs;
   final RxBool isRatingsLoading = false.obs;
   final RxList<Map<String, dynamic>> ratings = <Map<String, dynamic>>[].obs;
 
@@ -83,25 +89,70 @@ class PackageDetailsController extends GetxController {
 
       final data = await _packagesService.getPackage(packageId);
 
-     if (data != null) {
-  packageData.assignAll(data);
+      if (data != null) {
+        packageData.assignAll(data);
 
-  final guideId = data['guideId'];
+        final guideId = (data['guideId'] ?? '').toString();
 
-  if (guideId != null && guideId != '') {
-    final guideDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(guideId)
-        .get();
+        if (guideId.isNotEmpty) {
+          final guideDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(guideId)
+              .get();
 
-   if (guideDoc.exists) {
-  final guideData = guideDoc.data() as Map<String, dynamic>;
+          if (guideDoc.exists) {
+            final guideData = guideDoc.data() as Map<String, dynamic>;
 
-  guideName.value = guideData['fullName'] ?? '';
-  guideImage.value = guideData['image'] ?? '';
-}
-  }
-}
+            guideName.value = (guideData['fullName'] ?? '').toString();
+            guideImage.value = (guideData['image'] ?? '').toString();
+            guidePhone.value = (guideData['phone'] ?? '').toString();
+            guideYearsOfExperience.value =
+                (guideData['yearsOfExperience'] ?? '').toString();
+
+            final specs = guideData['specializations'];
+            if (specs is List && specs.isNotEmpty) {
+              guideSpecialization.value = (specs.first ?? '').toString();
+            } else {
+              guideSpecialization.value =
+                  (guideData['specialization'] ?? '').toString();
+            }
+
+            final langs = guideData['languages'];
+            if (langs is List) {
+              guideLanguages.assignAll(
+                langs.map((e) => e.toString()).toList(),
+              );
+            } else {
+              guideLanguages.clear();
+            }
+
+          }
+
+          try {
+            final pkgsSnap = await FirebaseFirestore.instance
+                .collection('tourPackages')
+                .where('guideId', isEqualTo: guideId)
+                .get();
+            double weightedSum = 0;
+            int totalReviews = 0;
+            for (final p in pkgsSnap.docs) {
+              final pd = p.data();
+              final r = (pd['rating'] as num?)?.toDouble() ?? 0.0;
+              final n = (pd['reviews'] as num?)?.toInt() ?? 0;
+              if (n > 0 && r > 0) {
+                weightedSum += r * n;
+                totalReviews += n;
+              }
+            }
+            guideRating.value =
+                totalReviews == 0 ? 0.0 : weightedSum / totalReviews;
+            guideTotalReviews.value = totalReviews;
+          } catch (_) {
+            guideRating.value = 0.0;
+            guideTotalReviews.value = 0;
+          }
+        }
+      }
     } catch (e) {
       Get.snackbar('Error', 'Failed to load package details');
     } finally {

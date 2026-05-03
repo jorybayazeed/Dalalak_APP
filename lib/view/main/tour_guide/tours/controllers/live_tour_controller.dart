@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
@@ -29,6 +30,7 @@ class LiveTourController extends GetxController {
   final RxSet<String> completedActivityIds = <String>{}.obs;
   final RxBool isTourEnded = false.obs;
   final Rxn<Timestamp> sessionStartedAt = Rxn<Timestamp>();
+  final RxString sessionId = ''.obs;
 
  @override
 void onInit() {
@@ -54,13 +56,21 @@ void onInit() {
         .where('tourId', isEqualTo: packageId)
         .snapshots()
         .listen((snap) {
+      final currentSession = sessionId.value.trim();
       final startedAt = sessionStartedAt.value;
 
       bookings.assignAll(
         snap.docs
             .where((d) {
-              if (startedAt == null) return true;
               final data = d.data();
+              final status =
+                  (data['status'] ?? '').toString().trim().toLowerCase();
+              if (status == 'completed') return false;
+              if (currentSession.isNotEmpty) {
+                final s = (data['sessionId'] ?? '').toString().trim();
+                return s.isEmpty || s == currentSession;
+              }
+              if (startedAt == null) return true;
               final bookedAt = data['bookedAt'];
               if (bookedAt is Timestamp) {
                 return bookedAt.compareTo(startedAt) >= 0;
@@ -112,6 +122,7 @@ void onInit() {
         }
         isTourEnded.value = (live['ended'] as bool?) ?? false;
         sessionStartedAt.value = live['sessionStartedAt'] as Timestamp?;
+        sessionId.value = (live['sessionId'] ?? '').toString();
       }
 
       _moveToInitialCamera();
@@ -249,10 +260,49 @@ void onInit() {
   }
 
   Future<void> endTour() async {
+    final endedSessionId =
+        sessionId.value.trim().isEmpty ? null : sessionId.value.trim();
+    final endedSessionStartedAt = sessionStartedAt.value;
+    final endedRegisteredCount = bookings.length;
     isTourEnded.value = true;
     activeActivityId.value = '';
     try {
       await _persistState();
+
+      try {
+        await _packagesService.notifyTourEnded(
+          packageId,
+          sessionId: endedSessionId,
+        );
+      } catch (_) {}
+
+      try {
+        await _packagesService.cleanupEndedTourBookings(
+          packageId,
+          sessionId: endedSessionId,
+        );
+      } catch (_) {}
+
+      try {
+        final guideUser = FirebaseAuth.instance.currentUser;
+        if (guideUser != null) {
+          await _packagesService.archiveEndedSession(
+            packageId: packageId,
+            guideId: guideUser.uid,
+            sessionId: endedSessionId,
+            sessionStartedAt: endedSessionStartedAt,
+            registeredCount: endedRegisteredCount,
+          );
+        }
+      } catch (_) {}
+
+      try {
+        await _packagesService.resetLiveTourState(packageId);
+        sessionId.value = '';
+        sessionStartedAt.value = null;
+        completedActivityIds.clear();
+        bookings.clear();
+      } catch (_) {}
     } catch (e) {
       isTourEnded.value = false;
       Get.snackbar(
@@ -268,11 +318,17 @@ void onInit() {
     final previousActive = activeActivityId.value;
     final previousCompleted = completedActivityIds.toSet();
     final previousSessionStartedAt = sessionStartedAt.value;
+    final previousSessionId = sessionId.value;
 
     isTourEnded.value = false;
     activeActivityId.value = '';
     completedActivityIds.clear();
-    sessionStartedAt.value = Timestamp.now();
+    if (sessionStartedAt.value == null) {
+      sessionStartedAt.value = Timestamp.now();
+    }
+    if (sessionId.value.trim().isEmpty) {
+      sessionId.value = DateTime.now().millisecondsSinceEpoch.toString();
+    }
 
     try {
       await _persistState();
@@ -288,32 +344,35 @@ void onInit() {
         ..clear()
         ..addAll(previousCompleted);
       sessionStartedAt.value = previousSessionStartedAt;
+      sessionId.value = previousSessionId;
       Get.snackbar(
         'Failed to restart tour',
         e.toString(),
         snackPosition: SnackPosition.BOTTOM,
       );
     }
-   
+
   }
 
   Future<void> _persistState() async {
-     print('WRITING LIVE STATE...');
+    Get.log('WRITING LIVE STATE...');
     await _packagesService.updateLiveTourState(
       packageId: packageId,
       activeActivityId: activeActivityId.value,
       completedActivityIds: completedActivityIds.toList(),
       ended: isTourEnded.value,
+      sessionId: sessionId.value.trim().isEmpty ? null : sessionId.value.trim(),
       sessionStartedAt: sessionStartedAt.value,
     );
   }
   Future<void> startTourIfNeeded() async {
   final live = packageData['liveTourState'];
-  print('START TOUR TRIGGERED');
+  Get.log('START TOUR TRIGGERED');
   if (live != null) return;
 
   sessionStartedAt.value = Timestamp.now();
   isTourEnded.value = false;
+  sessionId.value = DateTime.now().millisecondsSinceEpoch.toString();
 
   await _persistState();
   await load();

@@ -256,8 +256,11 @@ class RecommendationService {
   /// Rating and Popularity Boost
   static double _scoreRatingAndPopularity(double packageRating, int packageBookings) {
     double score = packageRating * 10; // 0-50 from rating (0-5 stars)
-    if (packageBookings > 10) score += 30;
-    else if (packageBookings > 5) score += 15;
+    if (packageBookings > 10) {
+      score += 30;
+    } else if (packageBookings > 5) {
+      score += 15;
+    }
     return min(100, score);
   }
 

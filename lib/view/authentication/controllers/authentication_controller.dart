@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:tour_app/services/auth_service.dart';
 import 'package:tour_app/services/storage_service.dart';
-import 'package:tour_app/services/user_service.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tour_guide/profile/controllers/profile_controller.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
-import 'package:tour_app/view/main/tourist/profile/controllers/profile_controller.dart';
 
 class AuthenticationController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -388,10 +386,8 @@ class AuthenticationController extends GetxController {
     try {
       await FirebaseAuth.instance.signOut();
 
-      Get.delete<TouristProfileController>();
       Get.delete<ProfileController>();
-      Get.delete<UserService>();
-      
+
       final result = await _authService.signInWithEmail(
         email: loginEmailController.text.trim(),
         password: loginPasswordController.text,

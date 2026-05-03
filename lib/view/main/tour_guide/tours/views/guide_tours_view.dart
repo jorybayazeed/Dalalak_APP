@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tour_guide/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tour_guide/tours/controllers/guide_tours_controller.dart';
 import 'package:tour_app/view/main/tour_guide/tours/views/live_tour_view.dart';
@@ -22,6 +23,21 @@ class GuideToursView extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
               child: Row(
                 children: [
+                  GestureDetector(
+                    onTap: () {
+                      Get.offAll(() => const DashboardView());
+                    },
+                    child: Container(
+                      width: 40.w,
+                      height: 40.h,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.arrow_back, size: 20.sp),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
                   Expanded(
                     child: Text(
                       'My Tours',
@@ -50,11 +66,57 @@ class GuideToursView extends StatelessWidget {
                   );
                 }
 
+                final activeTours = controller.tours.where((t) {
+                  final live = t['liveTourState'];
+                  final ended = (live is Map && live['ended'] == true);
+                  return !ended;
+                }).toList();
+
+                final completedTours = controller.tours.where((t) {
+                  final live = t['liveTourState'];
+                  final ended = (live is Map && live['ended'] == true);
+                  return ended;
+                }).toList();
+
                 return SingleChildScrollView(
                   padding: EdgeInsets.symmetric(horizontal: 18.w),
                   child: Column(
                     children: [
-                      ...controller.tours.map((t) => _TourCard(tour: t)),
+                      if (activeTours.isNotEmpty)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: EdgeInsets.only(bottom: 12.h, top: 4.h),
+                            child: Text(
+                              'Active Tours',
+                              style: GoogleFonts.inter(
+                                color: Colors.black,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      ...activeTours.map((t) => _TourCard(tour: t)),
+
+                      if (completedTours.isNotEmpty)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: EdgeInsets.only(bottom: 12.h, top: 4.h),
+                            child: Text(
+                              'Completed Tours',
+                              style: GoogleFonts.inter(
+                                color: Colors.black,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      ...completedTours.map((t) => _TourCard(tour: t)),
                       SizedBox(height: 24.h),
                     ],
                   ),
@@ -171,7 +233,7 @@ class _TourCard extends StatelessWidget {
                         SizedBox(width: 6.w),
                         Obx(() {
                           final count = controller.registeredCountByTourId[tour['id']] ?? 0;
-                          print("UI ID: ${tour['id']}");
+                          Get.log("UI ID: ${tour['id']}");
                           return Text(
                             '$count registered',
                             style: GoogleFonts.inter(

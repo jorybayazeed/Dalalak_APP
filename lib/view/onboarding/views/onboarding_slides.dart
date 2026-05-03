@@ -58,39 +58,6 @@ class OnboardingSlides extends StatelessWidget {
                   SafeArea(
                     child: Column(
                       children: [
-                        Padding(
-                          padding: EdgeInsets.only(top: 20.h, right: 18.w),
-                          child: Align(
-                            alignment: Alignment.topRight,
-                            child: Container(
-                              height: 40.h,
-                              padding: EdgeInsets.symmetric(horizontal: 18.w),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(30.r),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.language,
-                                    color: Colors.black,
-                                    size: 18.sp,
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Text(
-                                    'AR',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.black,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
                         const Spacer(),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 24.w),

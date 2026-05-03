@@ -26,6 +26,23 @@ class _BookingViewState extends State<BookingView> {
   final TextEditingController expiryDateController = TextEditingController();
   final TextEditingController cvvController = TextEditingController();
 
+  int _guests = 1;
+
+  double _parsePrice(dynamic v) {
+    if (v is num) return v.toDouble();
+    final raw = (v ?? '').toString().trim();
+    if (raw.isEmpty) return 0.0;
+    final cleaned = raw.replaceAll(RegExp(r'[^0-9\.]'), '');
+    return double.tryParse(cleaned) ?? 0.0;
+  }
+
+  double get _basePrice => _parsePrice(widget.tour['price']);
+
+  double get _totalPrice {
+    final guests = _guests < 1 ? 1 : _guests;
+    return _basePrice * guests;
+  }
+
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
@@ -69,48 +86,120 @@ class _BookingViewState extends State<BookingView> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    guestsController.addListener(() {
+      final guests = int.tryParse(guestsController.text.trim()) ?? 1;
+      final next = guests < 1 ? 1 : guests;
+      if (next != _guests) {
+        setState(() {
+          _guests = next;
+        });
+      }
+    });
+  }
+
   Future<void> _confirmBooking() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      Get.snackbar('Error', 'User not logged in');
+      return;
+    }
+
+    final userId = user.uid;
+    final tourId = (widget.tour['id'] ?? '').toString();
+
+    var currentSessionId = '';
+
+    if (tourId.isEmpty) {
+      Get.snackbar('Error', 'Tour ID not found');
+      return;
+    }
+
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final upcomingRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('upcomingBookings');
 
-      if (user == null) {
-        Get.snackbar('Error', 'User not logged in');
+      final docById = await upcomingRef.doc(tourId).get();
+      if (docById.exists) {
+        Get.snackbar(
+          'Already booked',
+          'You already booked this tour',
+          snackPosition: SnackPosition.BOTTOM,
+        );
         return;
       }
 
-      final userId = user.uid;
-      final tourId = (widget.tour['id'] ?? '').toString();
-
-      if (tourId.isEmpty) {
-        Get.snackbar('Error', 'Tour ID not found');
+      final docByField = await upcomingRef
+          .where('tourId', isEqualTo: tourId)
+          .limit(1)
+          .get();
+      if (docByField.docs.isNotEmpty) {
+        Get.snackbar(
+          'Already booked',
+          'You already booked this tour',
+          snackPosition: SnackPosition.BOTTOM,
+        );
         return;
       }
 
-      try {
-        final tourDoc = await FirebaseFirestore.instance
-            .collection('tourPackages')
-            .doc(tourId)
-            .get();
+      final tourDoc = await FirebaseFirestore.instance
+          .collection('tourPackages')
+          .doc(tourId)
+          .get();
 
-        if (tourDoc.exists) {
-          final tourData = tourDoc.data();
-          final live = tourData?['liveTourState'] as Map<String, dynamic>?;
-          final ended = (live?['ended'] as bool?) ?? false;
-          if (ended) {
-            Get.snackbar(
-              'Tour ended',
-              'This tour has already ended and can\'t be booked',
-              snackPosition: SnackPosition.BOTTOM,
-            );
-            return;
-          }
+      if (tourDoc.exists) {
+        final tourData = tourDoc.data();
+        final live = tourData?['liveTourState'] as Map<String, dynamic>?;
+        currentSessionId = (live?['sessionId'] ?? '').toString().trim();
+
+        final activities = (tourData?['activities'] as List<dynamic>?) ?? const [];
+        final hasAnyLocation = activities.any((a) {
+          if (a is! Map) return false;
+          final m = a.cast<String, dynamic>();
+          final lat = (m['latitude'] as num?)?.toDouble();
+          final lng = (m['longitude'] as num?)?.toDouble();
+          return lat != null &&
+              lng != null &&
+              lat.isFinite &&
+              lng.isFinite;
+        });
+        if (!hasAnyLocation) {
+          Get.snackbar(
+            'Tour not available',
+            'This tour is not available due to lack of location pointed',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+          return;
         }
-      } catch (e) {
-        Get.log('Booking: failed to check tour state: $e');
-      }
 
+        final rawEnded = live?['ended'];
+        final ended = rawEnded is bool
+            ? rawEnded
+            : rawEnded is num
+                ? rawEnded != 0
+                : (rawEnded?.toString().trim().toLowerCase() == 'true' ||
+                    rawEnded?.toString().trim() == '1');
+        if (ended) {
+          Get.snackbar(
+            'Tour ended',
+            'This tour has already ended and can\'t be booked',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      Get.log('Booking: failed to check tour state: $e');
+    }
+
+    try {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -123,6 +212,11 @@ class _BookingViewState extends State<BookingView> {
 
       final userData = userDoc.data() as Map<String, dynamic>;
 
+      final guests = int.tryParse(guestsController.text.trim()) ?? 1;
+      final safeGuests = guests < 1 ? 1 : guests;
+      final basePrice = _basePrice;
+      final totalPrice = basePrice * safeGuests;
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -132,44 +226,116 @@ class _BookingViewState extends State<BookingView> {
             'tourId': tourId,
             'tourTitle': widget.tour['tourTitle'],
             'destination': widget.tour['destination'],
-            'price': widget.tour['price'],
+            'price': basePrice,
+            'totalPrice': totalPrice,
             'availableDates': widget.tour['availableDates'],
             'durationValue': widget.tour['durationValue'],
             'durationUnit': widget.tour['durationUnit'],
-            'guests': int.parse(guestsController.text.trim()),
+            'guests': safeGuests,
             'cardHolderName': cardNameController.text.trim(),
             'fullName': userData['fullName'] ?? '',
             'email': userData['email'] ?? '',
             'phone': userData['phone'] ?? '',
             'bookedAt': Timestamp.now(),
             'status': 'Upcoming',
+            if (currentSessionId.isNotEmpty) 'sessionId': currentSessionId,
           });
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'bookingCount': FieldValue.increment(1),
-      });
-     final newBadges =
-    await Get.find<GamificationService>().checkAndUnlockBadges();
 
-      
-      await FirebaseFirestore.instance
-          .collection('tourPackages')
-          .doc(tourId)
-          .update({'bookings': FieldValue.increment(1)});
+      try {
+        final tourDoc = await FirebaseFirestore.instance
+            .collection('tourPackages')
+            .doc(tourId)
+            .get();
+        final tourData = tourDoc.data();
+        final guideId = (tourData?['guideId'] ?? '').toString();
+        if (guideId.isNotEmpty) {
+          final touristName = (userData['fullName'] ?? 'A tourist').toString();
+          final tourTitle = (widget.tour['tourTitle'] ?? 'your tour').toString();
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(guideId)
+              .collection('notifications')
+              .add({
+            'type': 'booking',
+            'title': 'New Booking',
+            'message': '$touristName booked $tourTitle',
+            'isRead': false,
+            'createdAt': Timestamp.now(),
+            'serverCreatedAt': FieldValue.serverTimestamp(),
+            'tourId': tourId,
+          });
+        }
+      } catch (_) {
+        // Ignore notification errors.
+      }
+
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(userId).update({
+          'bookingCount': FieldValue.increment(1),
+        });
+      } catch (_) {}
+
+      var newBadges = <String>[];
+      try {
+        newBadges = await Get.find<GamificationService>().checkAndUnlockBadges();
+      } catch (_) {}
+
+      try {
+        await FirebaseFirestore.instance
+            .collection('tourPackages')
+            .doc(tourId)
+            .update({'bookings': FieldValue.increment(1)});
+      } catch (_) {}
+
+      final tourTitle = (widget.tour['tourTitle'] ?? '').toString();
 
       var bookingPointsEarned = 0;
       try {
         bookingPointsEarned = await Get.find<GamificationService>()
-            .awardBookingPoints(packageId: tourId);
+            .awardBookingPoints(
+              packageId: tourId,
+              sessionId: currentSessionId.isEmpty ? null : currentSessionId,
+            );
+
+        if (bookingPointsEarned > 0) {
+          Get.snackbar(
+            'Points Added',
+            'You earned +$bookingPointsEarned points for booking $tourTitle',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+
+        if (bookingPointsEarned > 0) {
+          try {
+            final notifId = 'booking_points_$tourId';
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .collection('notifications')
+                .doc(notifId)
+                .set({
+              'type': 'booking_points',
+              'title': 'Points Added',
+              'message': 'You earned +$bookingPointsEarned points for booking $tourTitle',
+              'isRead': false,
+              'createdAt': Timestamp.now(),
+              'serverCreatedAt': FieldValue.serverTimestamp(),
+              'tourId': tourId,
+              'pointsEarned': bookingPointsEarned,
+            }, SetOptions(merge: true));
+          } catch (_) {
+            // Ignore notification errors.
+          }
+        }
 
         await Get.find<GamificationService>().recomputeAndSyncTotalPoints(
           userId: userId,
           force: true,
         );
-      } catch (_) {
-        // Ignore points errors.
+      } catch (e) {
+        Get.log('Booking: failed to award points: $e');
       }
 
-      final tourTitle = (widget.tour['tourTitle'] ?? '').toString();
       await Get.dialog<void>(
         AlertDialog(
           shape: RoundedRectangleBorder(
@@ -184,9 +350,7 @@ class _BookingViewState extends State<BookingView> {
           ),
           content: Text(
             newBadges.contains('first_booking')
-                ? 'You earned your first badge 🎉\n+ $bookingPointsEarned points'
-                : bookingPointsEarned > 0
-                ? 'You earned booking points (+$bookingPointsEarned)'
+                ? 'You earned your first badge 🎉'
                 : 'Your booking has been confirmed',
           ),
           actions: [
@@ -276,7 +440,7 @@ class _BookingViewState extends State<BookingView> {
                 ),
                 SizedBox(height: 8.h),
                 Text(
-                  'Price: ${widget.tour['price'] ?? ''} SAR',
+                  'Price: ${_totalPrice.toStringAsFixed(0)} SAR',
                   style: GoogleFonts.inter(
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w600,

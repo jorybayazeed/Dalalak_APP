@@ -6,6 +6,7 @@ import 'package:tour_app/view/main/tour_guide/dashboard/controllers/dashboard_co
 import 'package:tour_app/view/main/tour_guide/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tour_guide/shared/widgets/profile_dropdown.dart';
 import 'package:tour_app/view/main/tour_guide/profile/controllers/profile_controller.dart';
+import 'package:tour_app/view/main/tour_guide/notifications/controllers/guide_notifications_controller.dart';
 import 'package:tour_app/view/main/tour_guide/notifications/views/guide_notifications_view.dart';
 
 class DashboardView extends StatelessWidget {
@@ -33,34 +34,6 @@ class DashboardView extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      Container(
-                        height: 40.h,
-                        padding: EdgeInsets.symmetric(horizontal: 12.w),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.language,
-                              color: Colors.black,
-                              size: 18.sp,
-                            ),
-                            SizedBox(width: 6.w),
-                            Text(
-                              'AR',
-                              style: GoogleFonts.inter(
-                                color: Colors.black,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
                       GestureDetector(
                         onTap: () {
                           Get.to(() => const NotificationsView());
@@ -81,16 +54,40 @@ class DashboardView extends StatelessWidget {
                               ),
                             ),
                             Positioned(
-                              right: 8.w,
-                              top: 8.h,
-                              child: Container(
-                                width: 8.w,
-                                height: 8.h,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
+                              right: 4.w,
+                              top: 4.h,
+                              child: Obx(() {
+                                final count = Get.find<NotificationsController>()
+                                    .unreadCount;
+                                if (count <= 0) {
+                                  return const SizedBox.shrink();
+                                }
+                                final label = count > 9 ? '9+' : '$count';
+                                return Container(
+                                  constraints: BoxConstraints(
+                                    minWidth: 16.w,
+                                    minHeight: 16.h,
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 4.w,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.rectangle,
+                                    borderRadius:
+                                        BorderRadius.all(Radius.circular(8)),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    label,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                );
+                              }),
                             ),
                           ],
                         ),

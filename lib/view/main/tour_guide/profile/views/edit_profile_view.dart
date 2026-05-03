@@ -118,8 +118,10 @@ class _EditGuideProfileViewState extends State<EditGuideProfileView> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      isExpanded: true,
+      value: items.contains(value) ? value : null,
       decoration: inputStyle(label),
+      hint: Text('Select $label'),
       icon: const Icon(Icons.keyboard_arrow_down_rounded),
       items: items
           .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -237,10 +239,13 @@ class _EditGuideProfileViewState extends State<EditGuideProfileView> {
                     Row(
                       children: [
                         SizedBox(
-                          width: 110.w,
+                          width: 130.w,
                           child: DropdownButtonFormField<String>(
-                            value: selectedCountryCode,
+                            value: countryCodes.contains(selectedCountryCode)
+                                ? selectedCountryCode
+                                : null,
                             decoration: inputStyle('Code'),
+                            hint: const Text('Code'),
                             items: countryCodes
                                 .map(
                                   (e) => DropdownMenuItem(
@@ -333,10 +338,24 @@ class _EditGuideProfileViewState extends State<EditGuideProfileView> {
                 child: ElevatedButton(
                   onPressed: () {
                     final rawPhone = phoneController.text.trim();
-                    final cleanedPhone = rawPhone.replaceAll(
-                      RegExp(r'^\+\d+'),
-                      '',
-                    );
+                    final digitsOnly = rawPhone.replaceAll(RegExp(r'[^0-9]'), '');
+                    final selectedDigits =
+                        selectedCountryCode.replaceAll(RegExp(r'[^0-9]'), '');
+
+                    String cleanedPhone = digitsOnly;
+
+                    if (cleanedPhone.isNotEmpty) {
+                      if (selectedDigits.isNotEmpty) {
+                        if (cleanedPhone.startsWith('0')) {
+                          cleanedPhone =
+                              '$selectedDigits${cleanedPhone.substring(1)}';
+                        } else if (cleanedPhone.startsWith(selectedDigits)) {
+                          cleanedPhone = cleanedPhone;
+                        } else if (cleanedPhone.length <= 9) {
+                          cleanedPhone = '$selectedDigits$cleanedPhone';
+                        }
+                      }
+                    }
                     controller.saveProfile(
                       fullName: nameController.text.trim(),
                       email: emailController.text.trim(),

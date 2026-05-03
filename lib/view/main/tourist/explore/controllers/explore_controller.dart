@@ -64,7 +64,21 @@ class ExploreController extends GetxController {
 
     final savedIds = savedSnapshot.docs.map((doc) => doc.id).toSet();
 
-    final updatedTours = filteredData.map((tour) {
+    final bookedSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('upcomingBookings')
+        .get();
+
+    final bookedTourIds = bookedSnapshot.docs
+        .map((d) => (d.data()['tourId'] ?? d.id).toString())
+        .where((id) => id.trim().isNotEmpty)
+        .toSet();
+
+    final visibleTours =
+        filteredData.where((t) => !bookedTourIds.contains((t['id'] ?? '').toString())).toList();
+
+    final updatedTours = visibleTours.map((tour) {
       final updatedTour = Map<String, dynamic>.from(tour);
       updatedTour['isFavorite'] = savedIds.contains(tour['id']);
       return updatedTour;

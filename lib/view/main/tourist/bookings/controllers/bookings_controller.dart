@@ -10,26 +10,45 @@ class BookingsController extends GetxController {
   final RxBool isLoading = false.obs;
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _bookingsSub;
+  StreamSubscription<User?>? _authSub;
   int _loadSeq = 0;
 
   @override
   void onInit() {
     super.onInit();
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      _bookingsSub?.cancel();
-      _bookingsSub = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('upcomingBookings')
-          .snapshots()
-          .listen((snap) {
-        _loadBookingsFromSnapshot(snap);
-      }, onError: (e) {
-        Get.log('BookingsController snapshots error: $e');
-      });
+    _authSub?.cancel();
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      _bindForUser(user);
+    });
+
+    _bindForUser(FirebaseAuth.instance.currentUser);
+  }
+
+  void _bindForUser(User? user) {
+    _bookingsSub?.cancel();
+    _bookingsSub = null;
+
+    allBookings.clear();
+    selectedTab.value = 'Upcoming';
+
+    if (user == null) {
+      return;
     }
+
+    _bookingsSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('upcomingBookings')
+        .snapshots()
+        .listen(
+      (snap) {
+        _loadBookingsFromSnapshot(snap);
+      },
+      onError: (e) {
+        Get.log('BookingsController snapshots error: $e');
+      },
+    );
 
     loadBookings();
   }
@@ -51,12 +70,15 @@ class BookingsController extends GetxController {
       isLoading.value = true;
 
       final List<Map<String, dynamic>> loadedBookings = [];
+      var movedAnyToCompleted = false;
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
 
         String guideName = '';
         bool tourEnded = false;
+
+        final bookingSessionId = (data['sessionId'] ?? '').toString().trim();
 
         final tourId = data['tourId'] ?? data['packageId'] ?? doc.id;
         if (tourId != null && tourId.toString().isNotEmpty) {
@@ -69,7 +91,18 @@ class BookingsController extends GetxController {
             final tourData = tourDoc.data() as Map<String, dynamic>;
 
             final live = tourData['liveTourState'] as Map<String, dynamic>?;
-            tourEnded = (live?['ended'] as bool?) ?? false;
+            final rawEnded = live?['ended'];
+            final ended = rawEnded is bool
+                ? rawEnded
+                : rawEnded is num
+                    ? rawEnded != 0
+                    : (rawEnded?.toString().trim().toLowerCase() == 'true' ||
+                        rawEnded?.toString().trim() == '1');
+            final liveSessionId = (live?['sessionId'] ?? '').toString().trim();
+            tourEnded = ended &&
+                (bookingSessionId.isEmpty ||
+                    liveSessionId.isEmpty ||
+                    bookingSessionId == liveSessionId);
 
             final guideId = tourData['guideId'];
 
@@ -97,6 +130,7 @@ class BookingsController extends GetxController {
               },
               SetOptions(merge: true),
             );
+            movedAnyToCompleted = true;
           } catch (_) {
             // Ignore reconciliation errors.
           }
@@ -120,6 +154,18 @@ class BookingsController extends GetxController {
 
       if (seq != _loadSeq) return;
       allBookings.assignAll(loadedBookings);
+
+      if (movedAnyToCompleted && selectedTab.value.trim() == 'Upcoming') {
+        selectedTab.value = 'Completed';
+      } else {
+        final hasUpcoming = loadedBookings
+            .any((b) => _normalizeStatus(b['status']) == 'Upcoming');
+        final hasCompleted = loadedBookings
+            .any((b) => _normalizeStatus(b['status']) == 'Completed');
+        if (!hasUpcoming && hasCompleted && selectedTab.value.trim() == 'Upcoming') {
+          selectedTab.value = 'Completed';
+        }
+      }
     } catch (e) {
       Get.log('BookingsController snapshot processing error: $e');
     } finally {
@@ -154,6 +200,8 @@ class BookingsController extends GetxController {
   void onClose() {
     _bookingsSub?.cancel();
     _bookingsSub = null;
+    _authSub?.cancel();
+    _authSub = null;
     super.onClose();
   }
 

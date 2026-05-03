@@ -37,39 +37,6 @@ class OnboardingView extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
                 child: Column(
                   children: [
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Padding(
-                        padding: EdgeInsets.only(top: 20.h),
-                        child: Container(
-                          height: 40.h,
-                          padding: EdgeInsets.symmetric(horizontal: 18.w),
-                          decoration: BoxDecoration(
-                            color: const Color(0xB3004F3B),
-                            borderRadius: BorderRadius.circular(30.r),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.language,
-                                color: Colors.white,
-                                size: 18.sp,
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                'العربية',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                     SizedBox(height: 50.h),
                     Image.asset(
                       'images/onboarding_logo.png',

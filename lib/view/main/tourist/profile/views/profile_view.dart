@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tour_app/view/main/tourist/profile/controllers/profile_controller.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/bottom_navigation_bar.dart';
+import 'package:tour_app/view/main/tourist/shared/widgets/rate_tour_dialog.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 import 'package:tour_app/view/main/tourist/explore/views/package_details_view.dart';
 
@@ -419,7 +420,8 @@ class TouristProfileView extends StatelessWidget {
   }
 
   Widget _buildCompletedTourCard(Map<String, dynamic> tour) {
-    final rating = (tour['rating'] as num?)?.toDouble() ?? 0.0;
+    final userRating = (tour['userRating'] as int?);
+    final tourId = (tour['id'] ?? '').toString();
 
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
@@ -522,18 +524,65 @@ class TouristProfileView extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: List.generate(
-                        5,
-                        (index) => Icon(
-                          index < rating.toInt()
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: Colors.amber,
-                          size: 20.sp,
+                    if (userRating != null)
+                      Row(
+                        children: [
+                          Text(
+                            'Your rating: ',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF666666),
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          ...List.generate(
+                            5,
+                            (index) => Icon(
+                              index < userRating
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: Colors.amber,
+                              size: 18.sp,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      SizedBox(
+                        height: 32.h,
+                        child: ElevatedButton.icon(
+                          onPressed: tourId.isEmpty
+                              ? null
+                              : () async {
+                                  await Get.dialog<void>(
+                                    RateTourDialog(tourId: tourId),
+                                    barrierDismissible: true,
+                                  );
+                                  await Get.find<TouristProfileController>()
+                                      .refreshCompletedTours();
+                                },
+                          icon: Icon(
+                            Icons.star_outline,
+                            color: Colors.white,
+                            size: 16.sp,
+                          ),
+                          label: Text(
+                            'Rate',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00A86B),
+                            padding: EdgeInsets.symmetric(horizontal: 14.w),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
                     Text(
                       (tour['completionDate'] ?? '').toString(),
                       style: GoogleFonts.inter(
