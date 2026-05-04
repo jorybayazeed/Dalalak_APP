@@ -79,8 +79,8 @@ class WeatherService {
 
       return WeatherData(
         temperature: (current['temperature_2m'] as num).toDouble(),
-        weatherCode: (current['weather_code'] as num? ?? current['weathercode'] as num? ?? 0).toInt(),
-        windSpeed: (current['wind_speed_10m'] as num? ?? current['windspeed_10m'] as num? ?? 0).toDouble(),
+        weatherCode: (current['weather_code'] as num).toInt(),
+        windSpeed: (current['wind_speed_10m'] as num).toDouble(),
         humidity: (current['relative_humidity_2m'] as num).toDouble(),
         city: city,
       );
