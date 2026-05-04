@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
+import 'package:tour_app/view/main/tourist/home/controllers/weather_controller.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/profile_dropdown.dart';
 
@@ -165,6 +166,8 @@ class TouristHomeView extends StatelessWidget {
                       ),
                     ),
                    
+                    SizedBox(height: 20.h),
+                    _WeatherCard(),
                     SizedBox(height: 20.h),
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: 18.w),
@@ -688,6 +691,218 @@ Padding(
               fontSize: 10.sp,
               fontWeight: FontWeight.w500,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Weather card ─────────────────────────────────────────────────────────────
+
+class _WeatherCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final WeatherController controller = Get.find<WeatherController>();
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 18.w),
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+        ),
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Obx(() {
+        if (controller.isLoading.value) {
+          return SizedBox(
+            height: 80.h,
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        }
+
+        if (controller.hasError.value || controller.weather.value == null) {
+          return SizedBox(
+            height: 80.h,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cloud_off, color: Colors.white70, size: 28.sp),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Weather unavailable',
+                    style: GoogleFonts.inter(
+                      color: Colors.white70,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  GestureDetector(
+                    onTap: controller.fetchWeather,
+                    child: Text(
+                      'Tap to retry',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 12.sp,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final w = controller.weather.value!;
+        return Row(
+          children: [
+            // Temperature + icon
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${w.temperature.round()}°',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 48.sp,
+                          fontWeight: FontWeight.bold,
+                          height: 1,
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(top: 6.h),
+                        child: Text(
+                          'C',
+                          style: GoogleFonts.inter(
+                            color: Colors.white70,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    w.conditionLabel,
+                    style: GoogleFonts.inter(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: Colors.white70,
+                        size: 14.sp,
+                      ),
+                      SizedBox(width: 2.w),
+                      Text(
+                        w.city,
+                        style: GoogleFonts.inter(
+                          color: Colors.white70,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Right side: icon + details + city picker
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  w.conditionIcon,
+                  style: TextStyle(fontSize: 40.sp),
+                ),
+                SizedBox(height: 8.h),
+                _weatherDetail(
+                  Icons.air,
+                  '${w.windSpeed.round()} km/h',
+                ),
+                SizedBox(height: 4.h),
+                _weatherDetail(
+                  Icons.water_drop,
+                  '${w.humidity.round()}%',
+                ),
+                SizedBox(height: 8.h),
+                // City picker
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 4.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: controller.selectedCity.value,
+                      dropdownColor: const Color(0xFF1976D2),
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      iconEnabledColor: Colors.white,
+                      iconSize: 14.sp,
+                      isDense: true,
+                      items: WeatherController.cities
+                          .map(
+                            (city) => DropdownMenuItem(
+                              value: city,
+                              child: Text(city),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (city) {
+                        if (city != null) {
+                          controller.fetchWeather(city: city);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _weatherDetail(IconData icon, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white70, size: 14.sp),
+        SizedBox(width: 4.w),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 12.sp,
           ),
         ),
       ],
