@@ -38,9 +38,28 @@ class _BookingViewState extends State<BookingView> {
 
   double get _basePrice => _parsePrice(widget.tour['price']);
 
+  double get _unitPrice {
+    final discounted = widget.tour['_discountedUnitPrice'];
+    if (discounted is num) return discounted.toDouble();
+    return _basePrice;
+  }
+
+  int get _appliedDiscountPercent {
+    final v = widget.tour['_appliedDiscountPercent'];
+    if (v is num) return v.toInt();
+    return 0;
+  }
+
+  String? get _appliedRewardId {
+    final v = widget.tour['_appliedRewardId'];
+    if (v == null) return null;
+    final s = v.toString();
+    return s.isEmpty ? null : s;
+  }
+
   double get _totalPrice {
     final guests = _guests < 1 ? 1 : _guests;
-    return _basePrice * guests;
+    return _unitPrice * guests;
   }
 
   InputDecoration _inputDecoration(String label) {
@@ -160,7 +179,7 @@ class _BookingViewState extends State<BookingView> {
         currentSessionId = (live?['sessionId'] ?? '').toString().trim();
 
         final activities = (tourData?['activities'] as List<dynamic>?) ?? const [];
-        final hasAnyLocation = activities.any((a) {
+        final hasActivityLocation = activities.any((a) {
           if (a is! Map) return false;
           final m = a.cast<String, dynamic>();
           final lat = (m['latitude'] as num?)?.toDouble();
@@ -170,7 +189,22 @@ class _BookingViewState extends State<BookingView> {
               lat.isFinite &&
               lng.isFinite;
         });
-        if (!hasAnyLocation) {
+
+        bool hasTourLocation = false;
+        final mapLocRaw = (tourData?['mapLocation'] ?? '').toString().trim();
+        if (mapLocRaw.isNotEmpty) {
+          final parts = mapLocRaw.split(',');
+          if (parts.length == 2) {
+            final lat = double.tryParse(parts[0].trim());
+            final lng = double.tryParse(parts[1].trim());
+            hasTourLocation = lat != null &&
+                lng != null &&
+                lat.isFinite &&
+                lng.isFinite;
+          }
+        }
+
+        if (!hasActivityLocation && !hasTourLocation) {
           Get.snackbar(
             'Tour not available',
             'This tour is not available due to lack of location pointed',
@@ -215,7 +249,10 @@ class _BookingViewState extends State<BookingView> {
       final guests = int.tryParse(guestsController.text.trim()) ?? 1;
       final safeGuests = guests < 1 ? 1 : guests;
       final basePrice = _basePrice;
-      final totalPrice = basePrice * safeGuests;
+      final unitPrice = _unitPrice;
+      final totalPrice = unitPrice * safeGuests;
+      final discountPercent = _appliedDiscountPercent;
+      final rewardId = _appliedRewardId;
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -226,8 +263,11 @@ class _BookingViewState extends State<BookingView> {
             'tourId': tourId,
             'tourTitle': widget.tour['tourTitle'],
             'destination': widget.tour['destination'],
-            'price': basePrice,
+            'price': unitPrice,
+            'originalPrice': basePrice,
             'totalPrice': totalPrice,
+            if (discountPercent > 0) 'discountPercent': discountPercent,
+            if (rewardId != null) 'appliedRewardId': rewardId,
             'availableDates': widget.tour['availableDates'],
             'durationValue': widget.tour['durationValue'],
             'durationUnit': widget.tour['durationUnit'],
@@ -240,6 +280,18 @@ class _BookingViewState extends State<BookingView> {
             'status': 'Upcoming',
             if (currentSessionId.isNotEmpty) 'sessionId': currentSessionId,
           });
+
+      if (rewardId != null) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('rewards')
+              .doc(rewardId)
+              .update({
+            'totalAppliedCount': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {}
+      }
 
       try {
         final tourDoc = await FirebaseFirestore.instance
@@ -439,6 +491,40 @@ class _BookingViewState extends State<BookingView> {
                   style: GoogleFonts.inter(fontSize: 14.sp),
                 ),
                 SizedBox(height: 8.h),
+                if (_appliedDiscountPercent > 0) ...[
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 3.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE9C7),
+                          borderRadius: BorderRadius.circular(6.r),
+                        ),
+                        child: Text(
+                          'Reward applied: -$_appliedDiscountPercent%',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFFB36B00),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    'Original: ${(_basePrice * (_guests < 1 ? 1 : _guests)).toStringAsFixed(0)} SAR',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: Colors.grey,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                ],
                 Text(
                   'Price: ${_totalPrice.toStringAsFixed(0)} SAR',
                   style: GoogleFonts.inter(

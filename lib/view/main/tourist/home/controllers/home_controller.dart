@@ -1029,7 +1029,7 @@ class TouristHomeController extends GetxController {
           }
         } catch (_) {}
 
-        final hasAnyLocation = activities.any((a) {
+        final hasActivityLocation = activities.any((a) {
           if (a is! Map) return false;
           final m = a.cast<String, dynamic>();
           final lat = (m['latitude'] as num?)?.toDouble();
@@ -1039,7 +1039,21 @@ class TouristHomeController extends GetxController {
               lat.isFinite &&
               lng.isFinite;
         });
-        if (!hasAnyLocation) {
+        bool hasTourLocation = false;
+        final mapLocRaw =
+            (tourData['mapLocation'] ?? '').toString().trim();
+        if (mapLocRaw.isNotEmpty) {
+          final parts = mapLocRaw.split(',');
+          if (parts.length == 2) {
+            final lat = double.tryParse(parts[0].trim());
+            final lng = double.tryParse(parts[1].trim());
+            hasTourLocation = lat != null &&
+                lng != null &&
+                lat.isFinite &&
+                lng.isFinite;
+          }
+        }
+        if (!hasActivityLocation && !hasTourLocation) {
           try {
             await doc.reference.delete();
           } catch (_) {}

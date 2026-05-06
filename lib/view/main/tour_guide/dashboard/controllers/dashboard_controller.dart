@@ -6,6 +6,7 @@ import 'package:tour_app/view/main/tour_guide/packages/views/create_package_view
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tour_guide/profile/views/profile_view.dart';
 import 'package:tour_app/view/main/tour_guide/chat/views/chat_view.dart';
+import 'package:tour_app/view/main/tour_guide/rewards/views/guide_rewards_view.dart';
 import 'package:tour_app/view/main/tour_guide/tours/views/guide_tours_view.dart';
 
 class DashboardController extends GetxController {
@@ -95,6 +96,9 @@ class DashboardController extends GetxController {
         Get.to(() => const ChatView());
         break;
       case 3:
+        Get.to(() => const GuideRewardsView());
+        break;
+      case 4:
         Get.to(() => const ProfileView());
         break;
     }
