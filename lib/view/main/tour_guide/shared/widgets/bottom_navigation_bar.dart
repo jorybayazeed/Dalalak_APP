@@ -48,9 +48,15 @@ class TourGuideBottomNavigationBar extends StatelessWidget {
                   controller: controller,
                 ),
                 _buildNavItem(
+                  icon: Icons.card_giftcard,
+                  label: 'Rewards',
+                  index: 3,
+                  controller: controller,
+                ),
+                _buildNavItem(
                   icon: Icons.person,
                   label: 'Profile',
-                  index: 3,
+                  index: 4,
                   controller: controller,
                 ),
               ],

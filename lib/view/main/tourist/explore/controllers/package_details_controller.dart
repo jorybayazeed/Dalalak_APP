@@ -1,6 +1,8 @@
-import 'package:get/get.dart';
-import 'package:tour_app/services/packages_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
+import 'package:tour_app/services/gamification_service.dart';
+import 'package:tour_app/services/packages_service.dart';
 
 class PackageDetailsController extends GetxController {
   final PackagesService _packagesService = Get.find<PackagesService>();
@@ -18,6 +20,12 @@ class PackageDetailsController extends GetxController {
   final RxBool isRatingsLoading = false.obs;
   final RxList<Map<String, dynamic>> ratings = <Map<String, dynamic>>[].obs;
 
+  final RxList<Map<String, dynamic>> applicableRewards =
+      <Map<String, dynamic>>[].obs;
+  final RxInt myLevel = 1.obs;
+  final RxnString appliedRewardId = RxnString();
+  final RxInt appliedDiscountPercent = 0.obs;
+
   final String packageId;
 
   PackageDetailsController({required this.packageId});
@@ -27,6 +35,8 @@ class PackageDetailsController extends GetxController {
     super.onInit();
     loadPackage();
     loadRatings();
+    loadRewards();
+    _loadMyLevel();
   }
 
   Future<void> loadRatings() async {
@@ -158,6 +168,114 @@ class PackageDetailsController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> _loadMyLevel() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        myLevel.value = 1;
+        return;
+      }
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (!doc.exists) {
+        myLevel.value = 1;
+        return;
+      }
+      final data = doc.data() ?? <String, dynamic>{};
+      final lvl = (data['levelNumber'] as num?)?.toInt();
+      if (lvl != null && lvl >= 1) {
+        myLevel.value = lvl;
+        return;
+      }
+      final pts = (data['totalPoints'] as num?)?.toInt() ?? 0;
+      try {
+        final svc = Get.find<GamificationService>();
+        myLevel.value = svc.getLevelFromPoints(pts).level;
+      } catch (_) {
+        myLevel.value = 1;
+      }
+    } catch (_) {
+      myLevel.value = 1;
+    }
+  }
+
+  Future<void> loadRewards() async {
+    try {
+      applicableRewards.clear();
+
+      final snap = await FirebaseFirestore.instance
+          .collection('rewards')
+          .where('applicableTours', arrayContains: packageId)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      final now = DateTime.now();
+      final List<Map<String, dynamic>> loaded = [];
+
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final validUntil = data['validUntil'];
+        if (validUntil is Timestamp) {
+          if (validUntil.toDate().isBefore(now)) continue;
+        }
+        loaded.add({'id': doc.id, ...data});
+      }
+
+      loaded.sort((a, b) {
+        final aDisc = (a['discountPercent'] as num?)?.toInt() ?? 0;
+        final bDisc = (b['discountPercent'] as num?)?.toInt() ?? 0;
+        return bDisc.compareTo(aDisc);
+      });
+
+      applicableRewards.assignAll(loaded);
+    } catch (_) {
+      // Ignore rewards loading errors.
+    }
+  }
+
+  bool isRewardEligible(Map<String, dynamic> reward) {
+    final required = (reward['requiredLevel'] as num?)?.toInt() ?? 1;
+    return myLevel.value >= required;
+  }
+
+  void applyReward(Map<String, dynamic> reward) {
+    final type = (reward['type'] ?? '').toString();
+    if (type != 'tour_discount') return;
+    if (!isRewardEligible(reward)) {
+      Get.snackbar(
+        'Locked',
+        'Reach Level ${reward['requiredLevel']} to unlock this reward',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    appliedRewardId.value = (reward['id'] ?? '').toString();
+    appliedDiscountPercent.value =
+        (reward['discountPercent'] as num?)?.toInt() ?? 0;
+  }
+
+  void removeAppliedReward() {
+    appliedRewardId.value = null;
+    appliedDiscountPercent.value = 0;
+  }
+
+  double get _basePriceValue {
+    final raw = packageData['price'];
+    if (raw is num) return raw.toDouble();
+    final cleaned =
+        (raw ?? '').toString().replaceAll(RegExp(r'[^0-9\.]'), '');
+    return double.tryParse(cleaned) ?? 0.0;
+  }
+
+  double get discountedPrice {
+    final base = _basePriceValue;
+    final pct = appliedDiscountPercent.value;
+    if (pct <= 0) return base;
+    return base * (1 - pct / 100);
   }
 
   String get title => packageData['tourTitle'] ?? '';

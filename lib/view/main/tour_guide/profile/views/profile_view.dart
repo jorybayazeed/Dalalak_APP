@@ -18,7 +18,7 @@ class ProfileView extends StatelessWidget {
     Get.put(GuideToursController());
 
     final dashboardController = Get.find<DashboardController>();
-    dashboardController.currentBottomNavIndex.value = 3;
+    dashboardController.currentBottomNavIndex.value = 4;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F0E8),

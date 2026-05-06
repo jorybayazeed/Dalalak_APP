@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:tour_app/view/main/tourist/explore/controllers/package_details_controller.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/booking_view.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+LatLng? _parseTourLocation(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  final parts = raw.split(',');
+  if (parts.length != 2) return null;
+  final lat = double.tryParse(parts[0].trim());
+  final lng = double.tryParse(parts[1].trim());
+  if (lat == null || lng == null) return null;
+  if (lat.isNaN || lng.isNaN) return null;
+  return LatLng(lat, lng);
+}
 
 
 class PackageDetailsView extends StatelessWidget {
@@ -128,16 +141,100 @@ class PackageDetailsView extends StatelessWidget {
 
                       SizedBox(height: 16.h),
 
-                      Text(
-                        controller.price,
-                        style: GoogleFonts.inter(
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF00A86B),
-                        ),
-                      ),
+                      Obx(() {
+                        final pct = controller.appliedDiscountPercent.value;
+                        if (pct > 0) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${controller.discountedPrice.toStringAsFixed(0)} SAR',
+                                style: GoogleFonts.inter(
+                                  fontSize: 22.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF00A86B),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                controller.price,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.sp,
+                                  color: Colors.grey,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w,
+                                  vertical: 3.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFE9C7),
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                                child: Text(
+                                  '-$pct%',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFFB36B00),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return Text(
+                          controller.price,
+                          style: GoogleFonts.inter(
+                            fontSize: 22.sp,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF00A86B),
+                          ),
+                        );
+                      }),
 
                       SizedBox(height: 20.h),
+
+                      Obx(() {
+                        if (controller.applicableRewards.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.card_giftcard,
+                                  color: const Color(0xFFFFA000),
+                                  size: 20.sp,
+                                ),
+                                SizedBox(width: 8.w),
+                                Text(
+                                  'Rewards',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12.h),
+                            ...controller.applicableRewards.map((r) {
+                              return _RewardCard(
+                                reward: r,
+                                controller: controller,
+                              );
+                            }),
+                            SizedBox(height: 8.h),
+                          ],
+                        );
+                      }),
+
+                      SizedBox(height: 12.h),
                        Text(
   'Tour Guide',
   style: GoogleFonts.inter(
@@ -205,6 +302,70 @@ GestureDetector(
 ),
 
 SizedBox(height: 20.h),
+
+                      Builder(builder: (context) {
+                        final loc = _parseTourLocation(
+                          (controller.packageData['mapLocation'] ?? '')
+                              .toString(),
+                        );
+                        if (loc == null) return const SizedBox.shrink();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tour Location',
+                              style: GoogleFonts.inter(
+                                fontSize: 18.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12.r),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 200.h,
+                                child: FlutterMap(
+                                  options: MapOptions(
+                                    initialCenter: loc,
+                                    initialZoom: 14,
+                                    interactionOptions: const InteractionOptions(
+                                      flags: InteractiveFlag.pinchZoom |
+                                          InteractiveFlag.drag |
+                                          InteractiveFlag.doubleTapZoom,
+                                    ),
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate:
+                                          'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      subdomains: const ['a', 'b', 'c'],
+                                      userAgentPackageName: 'com.dalelak.app',
+                                    ),
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: loc,
+                                          width: 40,
+                                          height: 40,
+                                          alignment: Alignment.topCenter,
+                                          child: Icon(
+                                            Icons.location_on,
+                                            color: const Color(0xFF00A86B),
+                                            size: 36.sp,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 20.h),
+                          ],
+                        );
+                      }),
+
                       Text(
                         'Description',
                         style: GoogleFonts.inter(
@@ -400,10 +561,16 @@ SizedBox(height: 20.h),
     height: 50.h,
     child: ElevatedButton(
       onPressed: () {
+        final tourData = Map<String, dynamic>.from(controller.packageData);
+        if (controller.appliedRewardId.value != null &&
+            controller.appliedDiscountPercent.value > 0) {
+          tourData['_appliedRewardId'] = controller.appliedRewardId.value;
+          tourData['_appliedDiscountPercent'] =
+              controller.appliedDiscountPercent.value;
+          tourData['_discountedUnitPrice'] = controller.discountedPrice;
+        }
         Get.to(
-          () => BookingView(
-            tour: controller.packageData,
-          ),
+          () => BookingView(tour: tourData),
         );
       },
       style: ElevatedButton.styleFrom(
@@ -722,5 +889,204 @@ class _GuideProfileDialog extends StatelessWidget {
         }),
       ),
     );
+  }
+}
+
+class _RewardCard extends StatelessWidget {
+  const _RewardCard({required this.reward, required this.controller});
+
+  final Map<String, dynamic> reward;
+  final PackageDetailsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = (reward['type'] ?? '').toString();
+    final isPartner = type == 'partner_coupon';
+    final title = (reward['title'] ?? '').toString();
+    final desc = (reward['description'] ?? '').toString();
+    final disc = (reward['discountPercent'] as num?)?.toInt() ?? 0;
+    final required = (reward['requiredLevel'] as num?)?.toInt() ?? 1;
+    final partnerName = (reward['partnerName'] ?? '').toString();
+    final code = (reward['redemptionCode'] ?? '').toString();
+    final rewardId = (reward['id'] ?? '').toString();
+    final eligible = controller.isRewardEligible(reward);
+
+    return Obx(() {
+      final isApplied = controller.appliedRewardId.value == rewardId;
+      final accent = isPartner
+          ? const Color(0xFF7B61FF)
+          : const Color(0xFFFFA000);
+
+      return Container(
+        width: double.infinity,
+        margin: EdgeInsets.only(bottom: 10.h),
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: isApplied ? accent : Colors.grey.shade300,
+            width: isApplied ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 8.w,
+                    vertical: 3.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Text(
+                    isPartner ? 'Partner' : 'Tour Discount',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  '$disc% OFF',
+                  style: GoogleFonts.inter(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w800,
+                    color: accent,
+                  ),
+                ),
+                const Spacer(),
+                if (!eligible)
+                  Row(
+                    children: [
+                      Icon(Icons.lock, size: 12.sp, color: Colors.grey),
+                      SizedBox(width: 4.w),
+                      Text(
+                        'Lvl $required',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+            if (desc.trim().isNotEmpty) ...[
+              SizedBox(height: 4.h),
+              Text(
+                desc,
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  color: Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+            ],
+            if (isPartner && partnerName.isNotEmpty) ...[
+              SizedBox(height: 6.h),
+              Row(
+                children: [
+                  Icon(Icons.storefront, size: 12.sp, color: Colors.grey),
+                  SizedBox(width: 4.w),
+                  Text(
+                    partnerName,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            SizedBox(height: 10.h),
+            if (isPartner)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 10.w,
+                  vertical: 8.h,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.confirmation_number,
+                        size: 14.sp, color: Colors.black54),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        eligible ? code : 'Unlock at Level $required',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w800,
+                          color: eligible ? Colors.black : Colors.grey,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                height: 36.h,
+                child: ElevatedButton(
+                  onPressed: !eligible
+                      ? null
+                      : () {
+                          if (isApplied) {
+                            controller.removeAppliedReward();
+                          } else {
+                            controller.applyReward(reward);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isApplied ? Colors.white : accent,
+                    foregroundColor: isApplied ? accent : Colors.white,
+                    elevation: 0,
+                    side: isApplied
+                        ? BorderSide(color: accent, width: 1.2)
+                        : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  child: Text(
+                    !eligible
+                        ? 'Locked — Reach Level $required'
+                        : (isApplied ? 'Applied' : 'Apply Discount'),
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 }
