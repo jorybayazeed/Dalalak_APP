@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:tour_app/services/packages_service.dart';
+import 'package:tour_app/services/weather_service.dart';
 
 class GuideToursController extends GetxController {
   final PackagesService _packagesService = Get.find<PackagesService>();
@@ -16,6 +17,8 @@ class GuideToursController extends GetxController {
 
   final RxMap<String, List<Map<String, dynamic>>> ratingsByTourId =
       <String, List<Map<String, dynamic>>>{}.obs;
+    final RxMap<String, SmartWeatherAssessment> weatherByTourId =
+      <String, SmartWeatherAssessment>{}.obs;
 
   final Map<String, Timestamp?> _sessionStartedAtByTourId =
       <String, Timestamp?>{};
@@ -78,6 +81,8 @@ class GuideToursController extends GetxController {
               'title': (safe['tourTitle'] ?? '').toString(),
               'destination': (safe['destination'] ?? '').toString(),
               'availableDates': (safe['availableDates'] ?? '').toString(),
+              'startTime': (safe['startTime'] ?? '').toString(),
+              'activityType': (safe['activityType'] ?? '').toString(),
               'activities': safe['activities'],
               'liveTourState': safe['liveTourState'],
             };
@@ -106,7 +111,113 @@ class GuideToursController extends GetxController {
         ratingsCountByTourId.remove(id);
         ratingsByTourId.remove(id);
       }
+
+      _refreshWeatherForTours(next);
     });
+  }
+
+  bool _isOutdoorActivity(String activityType) {
+    final value = activityType.toLowerCase();
+    if (value.contains('beach') ||
+        value.contains('adventure') ||
+        value.contains('nature') ||
+        value.contains('wildlife') ||
+        value.contains('photography')) {
+      return true;
+    }
+    if (value.contains('historical') || value.contains('religious')) {
+      return true;
+    }
+    return true;
+  }
+
+  Future<void> _refreshWeatherForTours(List<Map<String, dynamic>> tours) async {
+    if (tours.isEmpty) {
+      weatherByTourId.clear();
+      return;
+    }
+
+    final weatherService = Get.find<WeatherService>();
+    final nextMap = <String, SmartWeatherAssessment>{};
+
+    for (final tour in tours) {
+      final tourId = (tour['id'] ?? '').toString();
+      final destination = (tour['destination'] ?? '').toString();
+      final dates = (tour['availableDates'] ?? '').toString();
+      final startTime = (tour['startTime'] ?? '').toString();
+      final activityType = (tour['activityType'] ?? '').toString();
+
+      if (tourId.isEmpty || destination.isEmpty) continue;
+
+      final tripAt = weatherService.inferTourDateTime(
+        availableDates: dates,
+        startTime: startTime,
+      );
+
+      try {
+        final assessment = await weatherService.evaluateSmartWeather(
+          cityName: destination,
+          tripDateTime: tripAt,
+          isOutdoor: _isOutdoorActivity(activityType),
+        );
+        nextMap[tourId] = assessment;
+        await _maybeCreateGuideWeatherNotification(
+          tourId: tourId,
+          title: (tour['title'] ?? '').toString(),
+          tripAt: tripAt,
+          assessment: assessment,
+        );
+      } catch (_) {
+        // Ignore weather fetch errors.
+      }
+    }
+
+    weatherByTourId.assignAll(nextMap);
+  }
+
+  Future<void> _maybeCreateGuideWeatherNotification({
+    required String tourId,
+    required String title,
+    required DateTime? tripAt,
+    required SmartWeatherAssessment assessment,
+  }) async {
+    if (tripAt == null) return;
+    if (assessment.tripRecommendation.level == WeatherRiskLevel.normal) return;
+
+    final now = DateTime.now();
+    final diff = tripAt.difference(now);
+    if (diff.isNegative) return;
+
+    String? window;
+    if (diff <= const Duration(hours: 6)) {
+      window = '6h';
+    } else if (diff <= const Duration(hours: 24)) {
+      window = '24h';
+    }
+    if (window == null) return;
+
+    final uid = _packagesService.currentUserId;
+    if (uid == null || uid.trim().isEmpty) return;
+
+    final rec = assessment.tripRecommendation;
+    final notifId = 'weather_${window}_$tourId';
+
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .doc(notifId)
+        .set({
+      'type': 'weather_alert',
+      'title': 'Smart Weather Alert',
+      'message':
+          'Updated forecast for "$title": ${rec.message}. Consider changing time/place before departure.',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'tourId': tourId,
+      'timeWindow': window,
+      'riskLevel': rec.level.name,
+    }, SetOptions(merge: true));
   }
 
   Future<void> _refreshRatingsList({

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/services/packages_service.dart';
+import 'package:tour_app/services/weather_service.dart';
 
 class PackageDetailsController extends GetxController {
   final PackagesService _packagesService = Get.find<PackagesService>();
@@ -19,6 +20,9 @@ class PackageDetailsController extends GetxController {
   final RxInt guideTotalReviews = 0.obs;
   final RxBool isRatingsLoading = false.obs;
   final RxList<Map<String, dynamic>> ratings = <Map<String, dynamic>>[].obs;
+  final RxBool isWeatherLoading = false.obs;
+  final Rxn<SmartWeatherAssessment> weatherAssessment =
+      Rxn<SmartWeatherAssessment>();
 
   final RxList<Map<String, dynamic>> applicableRewards =
       <Map<String, dynamic>>[].obs;
@@ -101,6 +105,7 @@ class PackageDetailsController extends GetxController {
 
       if (data != null) {
         packageData.assignAll(data);
+        await _loadWeatherForPackage(data);
 
         final guideId = (data['guideId'] ?? '').toString();
 
@@ -167,6 +172,33 @@ class PackageDetailsController extends GetxController {
       Get.snackbar('Error', 'Failed to load package details');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> _loadWeatherForPackage(Map<String, dynamic> data) async {
+    final destination = (data['destination'] ?? '').toString().trim();
+    if (destination.isEmpty) {
+      weatherAssessment.value = null;
+      return;
+    }
+
+    final weatherService = Get.find<WeatherService>();
+    final tripAt = weatherService.inferTourDateTime(
+      availableDates: (data['availableDates'] ?? '').toString(),
+      startTime: (data['startTime'] ?? '').toString(),
+    );
+
+    try {
+      isWeatherLoading.value = true;
+      weatherAssessment.value = await weatherService.evaluateSmartWeather(
+        cityName: destination,
+        tripDateTime: tripAt,
+        isOutdoor: true,
+      );
+    } catch (_) {
+      weatherAssessment.value = null;
+    } finally {
+      isWeatherLoading.value = false;
     }
   }
 

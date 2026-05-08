@@ -153,6 +153,7 @@ class PackagesService extends GetxService {
     required String tourDescription,
     String? activityType,
     String? availableDates,
+    String? startTime,
     List<Map<String, dynamic>>? activities,
   }) async {
     try {
@@ -172,6 +173,7 @@ class PackagesService extends GetxService {
         'tourDescription': tourDescription,
         'activityType': activityType ?? '',
         'availableDates': availableDates ?? '',
+        'startTime': startTime ?? '',
         'activities': activities ?? [],
         'guideId': userId,
         'status': 'Published',
@@ -206,6 +208,7 @@ class PackagesService extends GetxService {
     required String tourDescription,
     String? activityType,
     String? availableDates,
+    String? startTime,
     List<Map<String, dynamic>>? activities,
     bool? isCancelled,
   }) async {
@@ -226,6 +229,7 @@ class PackagesService extends GetxService {
         'tourDescription': tourDescription,
         'activityType': activityType ?? '',
         'availableDates': availableDates ?? '',
+        'startTime': startTime ?? '',
         'activities': activities ?? [],
         'updatedAt': FieldValue.serverTimestamp(),
       };

@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tourist/explore/controllers/package_details_controller.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/booking_view.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -140,6 +141,27 @@ class PackageDetailsView extends StatelessWidget {
                       ),
 
                       SizedBox(height: 16.h),
+
+                      Obx(() {
+                        if (controller.isWeatherLoading.value) {
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 16.h),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+
+                        final weather = controller.weatherAssessment.value;
+                        if (weather == null) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 16.h),
+                          child: _buildWeatherCard(weather),
+                        );
+                      }),
 
                       Obx(() {
                         final pct = controller.appliedDiscountPercent.value;
@@ -338,9 +360,15 @@ SizedBox(height: 20.h),
                                   children: [
                                     TileLayer(
                                       urlTemplate:
-                                          'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                      subdomains: const ['a', 'b', 'c'],
+                                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                                      subdomains: const ['a', 'b', 'c', 'd'],
                                       userAgentPackageName: 'com.dalelak.app',
+                                      tileProvider: NetworkTileProvider(
+                                        headers: const {
+                                          'Accept':
+                                              'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                                        },
+                                      ),
                                     ),
                                     MarkerLayer(
                                       markers: [
@@ -416,6 +444,16 @@ SizedBox(height: 20.h),
                           controller.availableDates,
                           style: GoogleFonts.inter(fontSize: 14.sp),
                         ),
+                        if ((controller.packageData['startTime'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty) ...[
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Start Time: ${controller.packageData['startTime']}',
+                            style: GoogleFonts.inter(fontSize: 14.sp),
+                          ),
+                        ],
                         SizedBox(height: 20.h),
                       ],
 
@@ -890,6 +928,59 @@ class _GuideProfileDialog extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildWeatherCard(SmartWeatherAssessment weather) {
+  final rec = weather.tripRecommendation;
+  final forecast = weather.tripForecast;
+
+  final color = switch (rec.level) {
+    WeatherRiskLevel.normal => const Color(0xFF2E7D32),
+    WeatherRiskLevel.caution => const Color(0xFFF9A825),
+    WeatherRiskLevel.warning => const Color(0xFFEF6C00),
+    WeatherRiskLevel.danger => const Color(0xFFC62828),
+  };
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withOpacity(0.35)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          rec.title,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 6),
+        if (forecast != null)
+          Text(
+            '${weather.city}: ${forecast.temperatureC.toStringAsFixed(0)}°C • Humidity ${forecast.humidity}% • Rain ${forecast.precipitationProbability}% • Wind ${forecast.windSpeedKmH.toStringAsFixed(0)} km/h',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF444444),
+            ),
+          ),
+        const SizedBox(height: 6),
+        Text(
+          rec.message,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            color: const Color(0xFF444444),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _RewardCard extends StatelessWidget {

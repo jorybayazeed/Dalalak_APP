@@ -43,7 +43,7 @@ class ChatView extends StatelessWidget {
                   ),
                   SizedBox(width: 12.w),
                   Image.asset(
-                    "images/onboarding_logo.png",
+                    "images/new_logo.png",
                     height: 32.w,
                     width: 32.w,
                   ),

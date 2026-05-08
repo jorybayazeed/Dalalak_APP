@@ -2,12 +2,15 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tourist/explore/views/package_details_view.dart';
 
 class BookingsController extends GetxController {
   final RxString selectedTab = 'Upcoming'.obs;
   final RxList<Map<String, dynamic>> allBookings = <Map<String, dynamic>>[].obs;
   final RxBool isLoading = false.obs;
+  final RxMap<String, SmartWeatherAssessment> weatherByBookingId =
+      <String, SmartWeatherAssessment>{}.obs;
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _bookingsSub;
   StreamSubscription<User?>? _authSub;
@@ -30,6 +33,7 @@ class BookingsController extends GetxController {
     _bookingsSub = null;
 
     allBookings.clear();
+    weatherByBookingId.clear();
     selectedTab.value = 'Upcoming';
 
     if (user == null) {
@@ -144,8 +148,11 @@ class BookingsController extends GetxController {
           'title': data['tourTitle'] ?? '',
           'guide': guideName,
           'date': data['availableDates'] ?? '',
-          'time': '${data['durationValue'] ?? ''} ${data['durationUnit'] ?? ''}',
+          'time': (data['startTime'] ?? '').toString().trim().isNotEmpty
+              ? (data['startTime'] ?? '').toString()
+              : '${data['durationValue'] ?? ''} ${data['durationUnit'] ?? ''}',
           'location': data['destination'] ?? '',
+          'startTime': data['startTime'] ?? '',
           'price': '${data['price'] ?? ''} SAR',
           'status': effectiveStatus,
           'image': 'images/tour_1.png',
@@ -154,6 +161,7 @@ class BookingsController extends GetxController {
 
       if (seq != _loadSeq) return;
       allBookings.assignAll(loadedBookings);
+      _refreshWeatherForBookings(loadedBookings);
 
       if (movedAnyToCompleted && selectedTab.value.trim() == 'Upcoming') {
         selectedTab.value = 'Completed';
@@ -173,6 +181,47 @@ class BookingsController extends GetxController {
         isLoading.value = false;
       }
     }
+  }
+
+  Future<void> _refreshWeatherForBookings(
+    List<Map<String, dynamic>> bookings,
+  ) async {
+    if (bookings.isEmpty) {
+      weatherByBookingId.clear();
+      return;
+    }
+
+    final weatherService = Get.find<WeatherService>();
+    final next = <String, SmartWeatherAssessment>{};
+
+    for (final booking in bookings) {
+      final id = (booking['id'] ?? '').toString();
+      final destination = (booking['location'] ?? '').toString();
+      final date = (booking['date'] ?? '').toString();
+      final startTime = (booking['startTime'] ?? '').toString();
+      final status = _normalizeStatus(booking['status']);
+
+      if (id.isEmpty || destination.isEmpty || status != 'Upcoming') continue;
+
+      try {
+        final tripAt = weatherService.inferTourDateTime(
+          availableDates: date,
+          startTime: startTime,
+        );
+
+        final assessment = await weatherService.evaluateSmartWeather(
+          cityName: destination,
+          tripDateTime: tripAt,
+          isOutdoor: true,
+        );
+
+        next[id] = assessment;
+      } catch (_) {
+        // Ignore weather loading failures for bookings.
+      }
+    }
+
+    weatherByBookingId.assignAll(next);
   }
 
   Future<void> loadBookings() async {

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tour_guide/packages/controllers/create_package_controller.dart';
 
 class CreatePackageView extends StatelessWidget {
@@ -222,6 +223,37 @@ else if (currentStep.value == 1) {
         onTap: () => controller.selectDates(context),
         onChanged: controller.setSelectedDates,
       ),
+
+      SizedBox(height: 20.h),
+
+      _buildTextField(
+        label: 'Start Time *',
+        hintText: 'Select start time',
+        controller: controller.startTimeController,
+        readOnly: true,
+        onTap: () => controller.selectStartTime(context),
+        onChanged: controller.setStartTime,
+      ),
+
+      SizedBox(height: 20.h),
+
+      Obx(() {
+        if (controller.isWeatherLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final weather = controller.weatherAssessment.value;
+        if (weather == null) {
+          return const SizedBox.shrink();
+        }
+
+        return _buildWeatherSuggestionCard(
+          weather: weather,
+          onUseEveningTime: controller.setSuggestedEveningTime,
+          onAutoApplyBestDateTime: controller.autoApplyBestDateAndTime,
+          onApplyAlternativeLocation: controller.applyAlternativeLocationOnMap,
+        );
+      }),
     ],
   );
 }
@@ -445,6 +477,248 @@ Obx(() => Row(
           onChanged: onChanged,
         ),
       ],
+    );
+  }
+
+  Widget _buildWeatherSuggestionCard({
+    required SmartWeatherAssessment weather,
+    required VoidCallback onUseEveningTime,
+    required VoidCallback onAutoApplyBestDateTime,
+    required VoidCallback onApplyAlternativeLocation,
+  }) {
+    final trip = weather.tripForecast;
+    final recommendation = weather.tripRecommendation;
+    final guide = weather.guideSuggestion;
+    final alternative = weather.alternativeLocation;
+
+    Color bg;
+    Color border;
+    IconData icon;
+
+    switch (recommendation.level) {
+      case WeatherRiskLevel.normal:
+        bg = const Color(0xFFEAF7EE);
+        border = const Color(0xFF9AD3AE);
+        icon = Icons.check_circle_outline;
+        break;
+      case WeatherRiskLevel.caution:
+        bg = const Color(0xFFFFF6E5);
+        border = const Color(0xFFF5C77D);
+        icon = Icons.tips_and_updates_outlined;
+        break;
+      case WeatherRiskLevel.warning:
+        bg = const Color(0xFFFFF1E8);
+        border = const Color(0xFFFFB27D);
+        icon = Icons.warning_amber_rounded;
+        break;
+      case WeatherRiskLevel.danger:
+        bg = const Color(0xFFFFECEC);
+        border = const Color(0xFFE38D8D);
+        icon = Icons.gpp_bad_outlined;
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: border),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  recommendation.title,
+                  style: GoogleFonts.inter(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          if (trip != null)
+            Text(
+              'Forecast: ${trip.temperatureC.toStringAsFixed(0)}°C • Humidity ${trip.humidity}% • Rain ${trip.precipitationProbability}% • Wind ${trip.windSpeedKmH.toStringAsFixed(0)} km/h',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: const Color(0xFF4A4A4A),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          SizedBox(height: 8.h),
+          Text(
+            recommendation.message,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: const Color(0xFF4A4A4A),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(10.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.65),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: border.withOpacity(0.6)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Guide Suggestion State: ${guide.state}',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 5.h),
+                Text(
+                  guide.summary,
+                  style: GoogleFonts.inter(
+                    fontSize: 11.sp,
+                    color: const Color(0xFF4A4A4A),
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  'Suggested Start Time: ${guide.suggestedStartTime}',
+                  style: GoogleFonts.inter(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF3A3A3A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (guide.suggestedDates.isNotEmpty) ...[
+            SizedBox(height: 10.h),
+            Text(
+              'Best Dates For Activity Type',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Wrap(
+              spacing: 8.w,
+              runSpacing: 8.h,
+              children: guide.suggestedDates.map((d) {
+                final label =
+                    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+                return ActionChip(
+                  label: Text(label),
+                  onPressed: () {
+                    final c = Get.find<CreatePackageController>();
+                    c.applySuggestedDate(d);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+          SizedBox(height: 8.h),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton.icon(
+              onPressed: onAutoApplyBestDateTime,
+              icon: const Icon(Icons.auto_fix_high),
+              label: const Text('Auto-Apply Best Date + Time'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0A7C5B),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+          if (alternative != null &&
+              (recommendation.level == WeatherRiskLevel.warning ||
+                  recommendation.level == WeatherRiskLevel.danger)) ...[
+            SizedBox(height: 10.h),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.75),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: const Color(0xFF1565C0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Alternative Map Location: ${alternative.city}',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF0D47A1),
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    alternative.reason,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      color: const Color(0xFF444444),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  OutlinedButton.icon(
+                    onPressed: onApplyAlternativeLocation,
+                    icon: const Icon(Icons.place_outlined),
+                    label: const Text('Use Alternative Location on Map'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          SizedBox(height: 8.h),
+          ...recommendation.tips.map(
+            (tip) => Padding(
+              padding: EdgeInsets.only(bottom: 4.h),
+              child: Text(
+                '• $tip',
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          ...guide.tips.map(
+            (tip) => Padding(
+              padding: EdgeInsets.only(bottom: 4.h),
+              child: Text(
+                '• $tip',
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          if (recommendation.suggestReschedule) ...[
+            SizedBox(height: 8.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: onUseEveningTime,
+                icon: const Icon(Icons.schedule),
+                label: const Text('Use suggested time: 6:00 PM'),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -750,8 +1024,15 @@ Obx(() => Row(
                               children: [
                                 TileLayer(
                                   urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                                  subdomains: const ['a', 'b', 'c', 'd'],
                                   userAgentPackageName: 'tour_app',
+                                  tileProvider: NetworkTileProvider(
+                                    headers: const {
+                                      'Accept':
+                                          'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                                    },
+                                  ),
                                 ),
                                 if (selectedPoint != null)
                                   MarkerLayer(

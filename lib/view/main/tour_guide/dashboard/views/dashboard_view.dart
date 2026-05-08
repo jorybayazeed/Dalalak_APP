@@ -8,6 +8,7 @@ import 'package:tour_app/view/main/tour_guide/shared/widgets/profile_dropdown.da
 import 'package:tour_app/view/main/tour_guide/profile/controllers/profile_controller.dart';
 import 'package:tour_app/view/main/tour_guide/notifications/controllers/guide_notifications_controller.dart';
 import 'package:tour_app/view/main/tour_guide/notifications/views/guide_notifications_view.dart';
+import 'package:tour_app/view/shared/live_translation/views/live_translation_view.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
@@ -28,7 +29,7 @@ class DashboardView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Image.asset(
-                    "images/onboarding_logo.png",
+                    "images/new_logo.png",
                     height: 36.w,
                     width: 36.w,
                   ),
@@ -57,8 +58,9 @@ class DashboardView extends StatelessWidget {
                               right: 4.w,
                               top: 4.h,
                               child: Obx(() {
-                                final count = Get.find<NotificationsController>()
-                                    .unreadCount;
+                                final count =
+                                    Get.find<NotificationsController>()
+                                        .unreadCount;
                                 if (count <= 0) {
                                   return const SizedBox.shrink();
                                 }
@@ -299,6 +301,39 @@ class DashboardView extends StatelessWidget {
                         ),
                       ],
                     ),
+                    SizedBox(height: 14.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18.w),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48.h,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Get.to(
+                            () => const LiveTranslationView(role: 'guide'),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D8A6A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.record_voice_over,
+                            color: Colors.white,
+                            size: 20.sp,
+                          ),
+                          label: Text(
+                            'Live Speech Translation',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),
                       child: Row(

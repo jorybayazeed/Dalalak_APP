@@ -8,6 +8,8 @@ import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/services/packages_service.dart';
 import 'package:tour_app/services/storage_service.dart';
 import 'package:tour_app/services/user_service.dart';
+import 'package:tour_app/services/guide_matching_service.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/controllers/dashboard_controller.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tour_guide/notifications/controllers/guide_notifications_controller.dart';
@@ -18,7 +20,6 @@ import 'package:tour_app/view/main/tourist/profile/controllers/profile_controlle
 import 'package:tour_app/view/onboarding/views/onboarding_view.dart';
 
 void main() async {
-  
   WidgetsFlutterBinding.ensureInitialized();
 
   String? initializationError;
@@ -31,6 +32,8 @@ void main() async {
     Get.put(AuthService(), permanent: true);
     Get.put(UserService(), permanent: true);
     Get.put(PackagesService(), permanent: true);
+    Get.put(WeatherService(), permanent: true);
+    Get.put(GuideMatchingService(), permanent: true);
     Get.put(GamificationService(), permanent: true);
     Get.put(TouristHomeController(), permanent: true);
     Get.put(TouristProfileController(), permanent: true);
@@ -38,7 +41,6 @@ void main() async {
     Get.put(DashboardController(), permanent: true);
     Get.put(NotificationsController(), permanent: true);
     Get.put(TouristNotificationsController(), permanent: true);
-
   } catch (e, st) {
     initializationError = e.toString();
     debugPrint('App initialization failed: $e');
@@ -54,31 +56,49 @@ class MyApp extends StatelessWidget {
   final String? initializationError;
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        return ScreenUtilInit(
-          designSize: const Size(360, 640),
-          builder: (_, __) {
-            return GestureDetector(
-              onTap: () {
-                FocusScopeNode currentFocus = FocusScope.of(context);
-                if (!currentFocus.hasPrimaryFocus) {
-                  currentFocus.unfocus();
-                }
-              },
-              child: GetMaterialApp(
-                title: 'Daleelak',
-                theme: ThemeData(
-                  colorScheme: ColorScheme.fromSeed(
-                    seedColor: Colors.deepPurple,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLargeScreen = constraints.maxWidth >= 700;
+        final appWidth = isLargeScreen ? 430.0 : constraints.maxWidth;
+
+        final appShell = SizedBox(
+          width: appWidth,
+          height: constraints.maxHeight,
+          child: ScreenUtilInit(
+            designSize: const Size(360, 640),
+            minTextAdapt: true,
+            splitScreenMode: true,
+            builder: (_, __) {
+              return GestureDetector(
+                onTap: () {
+                  FocusScopeNode currentFocus = FocusScope.of(context);
+                  if (!currentFocus.hasPrimaryFocus) {
+                    currentFocus.unfocus();
+                  }
+                },
+                child: GetMaterialApp(
+                  title: 'Daleelak',
+                  theme: ThemeData(
+                    colorScheme: ColorScheme.fromSeed(
+                      seedColor: Colors.deepPurple,
+                    ),
                   ),
+                  home: initializationError == null
+                      ? _getInitialRoute()
+                      : _StartupErrorView(message: initializationError!),
                 ),
-                home: initializationError == null
-                    ? _getInitialRoute()
-                    : _StartupErrorView(message: initializationError!),
-              ),
-            );
-          },
+              );
+            },
+          ),
+        );
+
+        if (!isLargeScreen) {
+          return appShell;
+        }
+
+        return ColoredBox(
+          color: const Color(0xFFEFF2F4),
+          child: Center(child: appShell),
         );
       },
     );
@@ -118,10 +138,7 @@ class _StartupErrorView extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                ),
+                Text(message, textAlign: TextAlign.center),
               ],
             ),
           ),
@@ -133,7 +150,6 @@ class _StartupErrorView extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
 
   final String title;
 
@@ -173,7 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), 
+      ),
     );
   }
 }

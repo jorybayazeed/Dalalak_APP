@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:tour_app/services/packages_service.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
+import 'package:http/http.dart' as http;
 
 class TourActivity {
   String id;
@@ -94,11 +95,16 @@ class CreatePackageController extends GetxController {
   final RxString price = '500'.obs;
   final RxString maxGroupSize = '15'.obs;
   final RxString selectedDates = ''.obs;
+  final RxString startTime = ''.obs;
   final RxString tourDescription = ''.obs;
 
   final RxList<TourActivity> activities = <TourActivity>[].obs;
   final List<TextEditingController> correctAnswerControllers = [];
   final RxBool isLoading = false.obs;
+  final RxBool isWeatherLoading = false.obs;
+  final Rxn<SmartWeatherAssessment> weatherAssessment = Rxn<SmartWeatherAssessment>();
+  final Rxn<AlternativeLocationSuggestion> alternativeLocationSuggestion =
+      Rxn<AlternativeLocationSuggestion>();
   final String? packageId;
 
   final RxMap<String, LatLng> activityDraftCenters = <String, LatLng>{}.obs;
@@ -220,6 +226,9 @@ class CreatePackageController extends GetxController {
   final TextEditingController priceController = TextEditingController(text: '500');
   final TextEditingController maxGroupSizeController = TextEditingController(text: '15');
   final TextEditingController selectedDatesController = TextEditingController();
+  final TextEditingController startTimeController = TextEditingController();
+
+  Timer? _weatherDebounce;
 
   CreatePackageController({this.packageId});
 
@@ -228,6 +237,8 @@ class CreatePackageController extends GetxController {
     super.onInit();
     if (packageId != null) {
       _loadPackageData();
+    } else {
+      _scheduleWeatherEvaluation();
     }
   }
 
@@ -254,6 +265,8 @@ class CreatePackageController extends GetxController {
         maxGroupSizeController.text = maxGroupSizeValue;
         selectedDates.value = packageData['availableDates'] as String? ?? '';
         selectedDatesController.text = selectedDates.value;
+        startTime.value = packageData['startTime'] as String? ?? '';
+        startTimeController.text = startTime.value;
         tourDescription.value = packageData['tourDescription'] as String? ?? '';
         tourDescriptionController.text = tourDescription.value;
 
@@ -280,6 +293,8 @@ class CreatePackageController extends GetxController {
             }
           }
         }
+
+        _scheduleWeatherEvaluation();
       }
     } catch (e) {
       Get.snackbar('Error', 'Failed to load package data');
@@ -321,10 +336,12 @@ class CreatePackageController extends GetxController {
     selectedDestination.value = destination;
     // Keep region aligned with destination when no dedicated region selector exists.
     selectedRegion.value = destination;
+    _scheduleWeatherEvaluation();
   }
 
   void setActivityType(String activityType) {
     selectedActivityType.value = activityType;
+    _scheduleWeatherEvaluation();
   }
 
   void setDurationValue(String value) {
@@ -346,6 +363,13 @@ class CreatePackageController extends GetxController {
   void setSelectedDates(String dates) {
     selectedDates.value = dates;
     selectedDatesController.text = dates;
+    _scheduleWeatherEvaluation();
+  }
+
+  void setStartTime(String value) {
+    startTime.value = value;
+    startTimeController.text = value;
+    _scheduleWeatherEvaluation();
   }
 
   Future<void> selectDates(BuildContext context) async {
@@ -375,6 +399,178 @@ class CreatePackageController extends GetxController {
           '${_formatDate(startDate)} - ${_formatDate(endDate)}';
       selectedDates.value = formattedDates;
       selectedDatesController.text = formattedDates;
+      _scheduleWeatherEvaluation();
+    }
+  }
+
+  Future<void> selectStartTime(BuildContext context) async {
+    final now = TimeOfDay.now();
+    final initial = _parseStartTimeOfDay(startTime.value) ?? now;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF00A86B),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked == null) return;
+
+    final hour12 = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
+    final minute = picked.minute.toString().padLeft(2, '0');
+    final meridiem = picked.period == DayPeriod.am ? 'AM' : 'PM';
+    final formatted = '$hour12:$minute $meridiem';
+    setStartTime(formatted);
+  }
+
+  TimeOfDay? _parseStartTimeOfDay(String raw) {
+    final clean = raw.trim();
+    if (clean.isEmpty) return null;
+
+    final m = RegExp(r'^(\d{1,2}):(\d{2})\s*([aApP][mM])$').firstMatch(clean);
+    if (m == null) return null;
+
+    final h = int.tryParse(m.group(1) ?? '');
+    final min = int.tryParse(m.group(2) ?? '');
+    if (h == null || min == null) return null;
+    if (h < 1 || h > 12 || min < 0 || min > 59) return null;
+
+    final ap = (m.group(3) ?? '').toUpperCase();
+    var hour24 = h % 12;
+    if (ap == 'PM') hour24 += 12;
+    return TimeOfDay(hour: hour24, minute: min);
+  }
+
+  void setSuggestedEveningTime() {
+    setStartTime('6:00 PM');
+  }
+
+  void autoApplyBestDateAndTime() {
+    final weather = weatherAssessment.value;
+    if (weather == null) {
+      Get.snackbar('Info', 'No weather suggestion available right now.');
+      return;
+    }
+
+    final guide = weather.guideSuggestion;
+    if (guide.suggestedDates.isNotEmpty) {
+      applySuggestedDate(guide.suggestedDates.first);
+    }
+    if (guide.suggestedStartTime.trim().isNotEmpty) {
+      setStartTime(guide.suggestedStartTime);
+    }
+
+    Get.snackbar(
+      'Applied',
+      'Best suggested date and time were applied automatically.',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+
+  void applyAlternativeLocationOnMap() {
+    final suggestion = alternativeLocationSuggestion.value;
+    if (suggestion == null) {
+      Get.snackbar('Info', 'No alternative location suggestion found.');
+      return;
+    }
+
+    setDestination(suggestion.city);
+
+    if (activities.isNotEmpty) {
+      final point = LatLng(suggestion.latitude, suggestion.longitude);
+      for (var i = 0; i < activities.length; i++) {
+        updateActivityLocation(i, point);
+        activityDraftCenters[activities[i].id] = point;
+      }
+    }
+
+    Get.snackbar(
+      'Alternative Location Applied',
+      'Destination and map points were moved to ${suggestion.city}.',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+
+  String _effectiveActivityType() {
+    if (selectedActivityType.value.trim().isNotEmpty) {
+      return selectedActivityType.value.trim();
+    }
+
+    for (final a in activities) {
+      final t = a.activityType.trim();
+      if (t.isNotEmpty) {
+        return t;
+      }
+    }
+
+    return '';
+  }
+
+  void applySuggestedDate(DateTime date) {
+    final formatted = '${_formatDate(date)} - ${_formatDate(date)}';
+    setSelectedDates(formatted);
+  }
+
+  bool get isOutdoorActivity {
+    final activity = _effectiveActivityType().toLowerCase();
+    if (activity.contains('beach') ||
+        activity.contains('adventure') ||
+        activity.contains('nature') ||
+        activity.contains('wildlife') ||
+        activity.contains('photography')) {
+      return true;
+    }
+    if (activity.contains('historical') || activity.contains('religious')) {
+      return true;
+    }
+    return true;
+  }
+
+  void _scheduleWeatherEvaluation() {
+    _weatherDebounce?.cancel();
+    _weatherDebounce = Timer(const Duration(milliseconds: 550), () {
+      evaluateWeatherForPlan();
+    });
+  }
+
+  Future<void> evaluateWeatherForPlan() async {
+    final destination = selectedDestination.value.trim();
+    if (destination.isEmpty) {
+      weatherAssessment.value = null;
+      alternativeLocationSuggestion.value = null;
+      return;
+    }
+
+    final weatherService = Get.find<WeatherService>();
+    final plannedAt = weatherService.inferTourDateTime(
+      availableDates: selectedDates.value,
+      startTime: startTime.value,
+    );
+
+    try {
+      isWeatherLoading.value = true;
+      final assessment = await weatherService.evaluateSmartWeather(
+        cityName: destination,
+        tripDateTime: plannedAt,
+        isOutdoor: isOutdoorActivity,
+        activityType: _effectiveActivityType(),
+      );
+      weatherAssessment.value = assessment;
+      alternativeLocationSuggestion.value = assessment.alternativeLocation;
+    } catch (_) {
+      weatherAssessment.value = null;
+      alternativeLocationSuggestion.value = null;
+    } finally {
+      isWeatherLoading.value = false;
     }
   }
 
@@ -741,23 +937,21 @@ class CreatePackageController extends GetxController {
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', params);
 
       Future<List<dynamic>> fetch(Uri u) async {
-        final client = HttpClient();
         try {
-          final request = await client.getUrl(u);
-          request.headers.set('User-Agent', 'DalalakApp/1.0 (contact: support@dalalak.app)');
-          request.headers.set('Accept', 'application/json');
-          request.headers.set('Accept-Language', 'en');
-          final res = await request.close();
+          final res = await http.get(
+            u,
+            headers: const {
+              'Accept': 'application/json',
+              'Accept-Language': 'en',
+            },
+          );
           if (res.statusCode < 200 || res.statusCode >= 300) {
             return const <dynamic>[];
           }
-          final body = await res.transform(utf8.decoder).join();
-          final decoded = jsonDecode(body);
+          final decoded = jsonDecode(res.body);
           return decoded is List ? decoded : const <dynamic>[];
         } catch (_) {
           return const <dynamic>[];
-        } finally {
-          client.close(force: true);
         }
       }
 
@@ -971,6 +1165,11 @@ class CreatePackageController extends GetxController {
     );
 
     activities[index] = updated;
+
+    if (selectedActivityType.value.trim().isEmpty) {
+      selectedActivityType.value = value;
+    }
+    _scheduleWeatherEvaluation();
   }
 
 
@@ -1088,6 +1287,11 @@ class CreatePackageController extends GetxController {
       return;
     }
 
+    if (startTime.value.trim().isEmpty) {
+      Get.snackbar('Error', 'Please select start time');
+      return;
+    }
+
     if (maxGroupSize.value.trim().isEmpty) {
       Get.snackbar('Error', 'Please enter max group size');
       return;
@@ -1119,6 +1323,9 @@ class CreatePackageController extends GetxController {
           availableDates: selectedDates.value.isNotEmpty
               ? selectedDates.value
               : null,
+            startTime: startTime.value.trim().isNotEmpty
+              ? startTime.value.trim()
+              : null,
           activityType: selectedActivityType.value.isNotEmpty
               ? selectedActivityType.value
               : null,
@@ -1147,6 +1354,9 @@ class CreatePackageController extends GetxController {
           tourDescription: tourDescription.value.trim(),
           availableDates: selectedDates.value.isNotEmpty
               ? selectedDates.value
+              : null,
+            startTime: startTime.value.trim().isNotEmpty
+              ? startTime.value.trim()
               : null,
           activityType: selectedActivityType.value.isNotEmpty
               ? selectedActivityType.value
@@ -1178,6 +1388,8 @@ class CreatePackageController extends GetxController {
     priceController.dispose();
     maxGroupSizeController.dispose();
     selectedDatesController.dispose();
+    startTimeController.dispose();
+    _weatherDebounce?.cancel();
     for (var controller in correctAnswerControllers) {
       controller.dispose();
     }

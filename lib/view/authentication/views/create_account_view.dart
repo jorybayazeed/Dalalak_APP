@@ -61,9 +61,9 @@ class CreateAccountView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Image.asset(
-                        'images/onboarding_logo.png',
-                        width: 100.w,
-                        height: 100.h,
+                        'images/new_logo.png',
+                        width: 190.w,
+                        height: 190.h,
                       ),
                       SizedBox(height: 24.h),
                       Align(
@@ -99,14 +99,15 @@ class CreateAccountView extends StatelessWidget {
                                 () => GestureDetector(
                                   onTap: () => controller.toggleRole('Tourist'),
                                   child: Container(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 12.h),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 12.h,
+                                    ),
                                     decoration: BoxDecoration(
                                       color:
                                           controller.selectedRole.value ==
-                                                  'Tourist'
-                                              ? Colors.white
-                                              : Colors.transparent,
+                                              'Tourist'
+                                          ? Colors.white
+                                          : Colors.transparent,
                                       borderRadius: BorderRadius.circular(30.r),
                                     ),
                                     child: Center(
@@ -115,9 +116,9 @@ class CreateAccountView extends StatelessWidget {
                                         style: GoogleFonts.inter(
                                           color:
                                               controller.selectedRole.value ==
-                                                      'Tourist'
-                                                  ? const Color(0xFF333333)
-                                                  : const Color(0xFF666666),
+                                                  'Tourist'
+                                              ? const Color(0xFF333333)
+                                              : const Color(0xFF666666),
                                           fontSize: 16.sp,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -133,14 +134,15 @@ class CreateAccountView extends StatelessWidget {
                                   onTap: () =>
                                       controller.toggleRole('Tour Guide'),
                                   child: Container(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 12.h),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 12.h,
+                                    ),
                                     decoration: BoxDecoration(
                                       color:
                                           controller.selectedRole.value ==
-                                                  'Tour Guide'
-                                              ? Colors.white
-                                              : Colors.transparent,
+                                              'Tour Guide'
+                                          ? Colors.white
+                                          : Colors.transparent,
                                       borderRadius: BorderRadius.circular(30.r),
                                     ),
                                     child: Center(
@@ -149,9 +151,9 @@ class CreateAccountView extends StatelessWidget {
                                         style: GoogleFonts.inter(
                                           color:
                                               controller.selectedRole.value ==
-                                                      'Tour Guide'
-                                                  ? const Color(0xFF333333)
-                                                  : const Color(0xFF666666),
+                                                  'Tour Guide'
+                                              ? const Color(0xFF333333)
+                                              : const Color(0xFF666666),
                                           fontSize: 16.sp,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -295,69 +297,67 @@ class CreateAccountView extends StatelessWidget {
                           ),
                         ),
                       ),
-                     Obx(
-  () {
-    if (controller.passwordStrengthLabel.value.isEmpty) {
-      return const SizedBox.shrink();
-    }
+                      Obx(() {
+                        if (controller.passwordStrengthLabel.value.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 12.h),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12.r),
-          child: LinearProgressIndicator(
-            value: controller.passwordStrength.value,
-            minHeight: 8.h,
-            backgroundColor: const Color(0xFFE0E0E0),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              controller.passwordStrength.value <= 0.4
-                  ? Colors.red
-                  : controller.passwordStrength.value <= 0.8
-                      ? Colors.orange
-                      : const Color(0xFF00A86B),
-            ),
-          ),
-        ),
-        SizedBox(height: 8.h),
-        Text(
-          'Password strength: ${controller.passwordStrengthLabel.value}',
-          style: GoogleFonts.inter(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-            color: controller.passwordStrength.value <= 0.4
-                ? Colors.red
-                : controller.passwordStrength.value <= 0.8
-                    ? Colors.orange
-                    : const Color(0xFF00A86B),
-          ),
-        ),
-        SizedBox(height: 10.h),
-        _PasswordRuleItem(
-          label: 'At least 8 characters',
-          isValid: controller.hasMinLength.value,
-        ),
-        _PasswordRuleItem(
-          label: 'At least one uppercase letter',
-          isValid: controller.hasUppercase.value,
-        ),
-        _PasswordRuleItem(
-          label: 'At least one lowercase letter',
-          isValid: controller.hasLowercase.value,
-        ),
-        _PasswordRuleItem(
-          label: 'At least one number',
-          isValid: controller.hasNumber.value,
-        ),
-        _PasswordRuleItem(
-          label: 'At least one special character',
-          isValid: controller.hasSpecialChar.value,
-        ),
-      ],
-    );
-  },
-),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 12.h),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12.r),
+                              child: LinearProgressIndicator(
+                                value: controller.passwordStrength.value,
+                                minHeight: 8.h,
+                                backgroundColor: const Color(0xFFE0E0E0),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  controller.passwordStrength.value <= 0.4
+                                      ? Colors.red
+                                      : controller.passwordStrength.value <= 0.8
+                                      ? Colors.orange
+                                      : const Color(0xFF00A86B),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              'Password strength: ${controller.passwordStrengthLabel.value}',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                                color: controller.passwordStrength.value <= 0.4
+                                    ? Colors.red
+                                    : controller.passwordStrength.value <= 0.8
+                                    ? Colors.orange
+                                    : const Color(0xFF00A86B),
+                              ),
+                            ),
+                            SizedBox(height: 10.h),
+                            _PasswordRuleItem(
+                              label: 'At least 8 characters',
+                              isValid: controller.hasMinLength.value,
+                            ),
+                            _PasswordRuleItem(
+                              label: 'At least one uppercase letter',
+                              isValid: controller.hasUppercase.value,
+                            ),
+                            _PasswordRuleItem(
+                              label: 'At least one lowercase letter',
+                              isValid: controller.hasLowercase.value,
+                            ),
+                            _PasswordRuleItem(
+                              label: 'At least one number',
+                              isValid: controller.hasNumber.value,
+                            ),
+                            _PasswordRuleItem(
+                              label: 'At least one special character',
+                              isValid: controller.hasSpecialChar.value,
+                            ),
+                          ],
+                        );
+                      }),
                       SizedBox(height: 16.h),
                       Obx(
                         () => TextField(
@@ -391,8 +391,7 @@ class CreateAccountView extends StatelessWidget {
                               onPressed:
                                   controller.toggleConfirmPasswordVisibility,
                             ),
-                            errorText:
-                                controller.confirmPasswordError.value,
+                            errorText: controller.confirmPasswordError.value,
                           ),
                           style: GoogleFonts.inter(
                             fontSize: 16.sp,
@@ -445,27 +444,28 @@ class CreateAccountView extends StatelessWidget {
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 16.w,
                                         ),
-                                        items: [
-                                          '18-24',
-                                          '25-34',
-                                          '35-44',
-                                          '45-54',
-                                          '55-64',
-                                          '65+',
-                                        ]
-                                            .map(
-                                              (age) => DropdownMenuItem(
-                                                value: age,
-                                                child: Text(
-                                                  age,
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 16.sp,
-                                                    color: Colors.black,
+                                        items:
+                                            [
+                                                  '18-24',
+                                                  '25-34',
+                                                  '35-44',
+                                                  '45-54',
+                                                  '55-64',
+                                                  '65+',
+                                                ]
+                                                .map(
+                                                  (age) => DropdownMenuItem(
+                                                    value: age,
+                                                    child: Text(
+                                                      age,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 16.sp,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
+                                                )
+                                                .toList(),
                                         onChanged: (value) {
                                           if (value != null) {
                                             controller.setAge(value);
@@ -490,8 +490,7 @@ class CreateAccountView extends StatelessWidget {
                                   ),
                                   SizedBox(height: 8.h),
                                   TextField(
-                                    onChanged:
-                                        controller.setCountryOfResidence,
+                                    onChanged: controller.setCountryOfResidence,
                                     decoration: InputDecoration(
                                       hintText: 'Enter your country',
                                       hintStyle: GoogleFonts.inter(
@@ -501,8 +500,9 @@ class CreateAccountView extends StatelessWidget {
                                       filled: true,
                                       fillColor: const Color(0xFFF5F5F5),
                                       border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12.r),
+                                        borderRadius: BorderRadius.circular(
+                                          12.r,
+                                        ),
                                         borderSide: BorderSide.none,
                                       ),
                                       contentPadding: EdgeInsets.symmetric(
@@ -528,8 +528,11 @@ class CreateAccountView extends StatelessWidget {
                                     ),
                                     child: DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
-                                        value: controller
-                                                .travelBudget.value.isEmpty
+                                        value:
+                                            controller
+                                                .travelBudget
+                                                .value
+                                                .isEmpty
                                             ? null
                                             : controller.travelBudget.value,
                                         hint: Text(
@@ -543,24 +546,25 @@ class CreateAccountView extends StatelessWidget {
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 16.w,
                                         ),
-                                        items: [
-                                          'Budget-friendly',
-                                          'Mid-range',
-                                          'Luxury',
-                                        ]
-                                            .map(
-                                              (budget) => DropdownMenuItem(
-                                                value: budget,
-                                                child: Text(
-                                                  budget,
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 16.sp,
-                                                    color: Colors.black,
+                                        items:
+                                            [
+                                                  'Budget-friendly',
+                                                  'Mid-range',
+                                                  'Luxury',
+                                                ]
+                                                .map(
+                                                  (budget) => DropdownMenuItem(
+                                                    value: budget,
+                                                    child: Text(
+                                                      budget,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 16.sp,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
+                                                )
+                                                .toList(),
                                         onChanged: (value) {
                                           if (value != null) {
                                             controller.setTravelBudget(value);
@@ -593,8 +597,8 @@ class CreateAccountView extends StatelessWidget {
                                       child: DropdownButton<String>(
                                         value:
                                             controller.travelPace.value.isEmpty
-                                                ? null
-                                                : controller.travelPace.value,
+                                            ? null
+                                            : controller.travelPace.value,
                                         hint: Text(
                                           'Select pace',
                                           style: GoogleFonts.inter(
@@ -606,24 +610,25 @@ class CreateAccountView extends StatelessWidget {
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 16.w,
                                         ),
-                                        items: [
-                                          'Relaxed and slow-paced',
-                                          'Action-packed and fast-paced',
-                                          'A bit of both',
-                                        ]
-                                            .map(
-                                              (pace) => DropdownMenuItem(
-                                                value: pace,
-                                                child: Text(
-                                                  pace,
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 16.sp,
-                                                    color: Colors.black,
+                                        items:
+                                            [
+                                                  'Relaxed and slow-paced',
+                                                  'Action-packed and fast-paced',
+                                                  'A bit of both',
+                                                ]
+                                                .map(
+                                                  (pace) => DropdownMenuItem(
+                                                    value: pace,
+                                                    child: Text(
+                                                      pace,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 16.sp,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
+                                                )
+                                                .toList(),
                                         onChanged: (value) {
                                           if (value != null) {
                                             controller.setTravelPace(value);
@@ -650,63 +655,79 @@ class CreateAccountView extends StatelessWidget {
                                   Wrap(
                                     spacing: 12.w,
                                     runSpacing: 12.h,
-                                    children: [
-                                      'Adventure',
-                                      'Cultural Heritage',
-                                      'Nature & Wildlife',
-                                      'Religious',
-                                      'Beach',
-                                      'Entertainment',
-                                      'Historical',
-                                      'Photography',
-                                      'Food & Culinary',
-                                      'Relaxation',
-                                    ]
-                                        .map(
-                                          (interest) => Obx(
-                                            () => GestureDetector(
-                                              onTap: () => controller
-                                                  .toggleInterest(interest),
-                                              child: Container(
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 16.w,
-                                                  vertical: 10.h,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: controller.interests
-                                                          .contains(interest)
-                                                      ? const Color(0xFF00A86B)
-                                                      : Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          8.r),
-                                                  border: Border.all(
-                                                    color: controller.interests
-                                                            .contains(interest)
-                                                        ? const Color(
-                                                            0xFF00A86B)
-                                                        : const Color(
-                                                            0xFFE0E0E0),
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  interest,
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14.sp,
-                                                    color: controller.interests
-                                                            .contains(interest)
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                                    fontWeight:
-                                                        FontWeight.w500,
+                                    children:
+                                        [
+                                              'Adventure',
+                                              'Cultural Heritage',
+                                              'Nature & Wildlife',
+                                              'Religious',
+                                              'Beach',
+                                              'Entertainment',
+                                              'Historical',
+                                              'Photography',
+                                              'Food & Culinary',
+                                              'Relaxation',
+                                            ]
+                                            .map(
+                                              (interest) => Obx(
+                                                () => GestureDetector(
+                                                  onTap: () => controller
+                                                      .toggleInterest(interest),
+                                                  child: Container(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 16.w,
+                                                          vertical: 10.h,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          controller.interests
+                                                              .contains(
+                                                                interest,
+                                                              )
+                                                          ? const Color(
+                                                              0xFF00A86B,
+                                                            )
+                                                          : Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8.r,
+                                                          ),
+                                                      border: Border.all(
+                                                        color:
+                                                            controller.interests
+                                                                .contains(
+                                                                  interest,
+                                                                )
+                                                            ? const Color(
+                                                                0xFF00A86B,
+                                                              )
+                                                            : const Color(
+                                                                0xFFE0E0E0,
+                                                              ),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      interest,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14.sp,
+                                                        color:
+                                                            controller.interests
+                                                                .contains(
+                                                                  interest,
+                                                                )
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
+                                            )
+                                            .toList(),
                                   ),
                                 ],
                               )
@@ -734,11 +755,15 @@ class CreateAccountView extends StatelessWidget {
                                     ),
                                     child: DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
-                                        value: controller.yearsOfExperience
-                                                .value.isEmpty
+                                        value:
+                                            controller
+                                                .yearsOfExperience
+                                                .value
+                                                .isEmpty
                                             ? null
                                             : controller
-                                                .yearsOfExperience.value,
+                                                  .yearsOfExperience
+                                                  .value,
                                         hint: Text(
                                           'Select years',
                                           style: GoogleFonts.inter(
@@ -795,8 +820,11 @@ class CreateAccountView extends StatelessWidget {
                                     ),
                                     child: DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
-                                        value: controller
-                                                .specialization.value.isEmpty
+                                        value:
+                                            controller
+                                                .specialization
+                                                .value
+                                                .isEmpty
                                             ? null
                                             : controller.specialization.value,
                                         hint: Text(
@@ -810,30 +838,29 @@ class CreateAccountView extends StatelessWidget {
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 16.w,
                                         ),
-                                        items: [
-                                          'Historical Tours',
-                                          'Adventure',
-                                          'Cultural',
-                                          'Nature & Wildlife',
-                                        ]
-                                            .map(
-                                              (type) => DropdownMenuItem(
-                                                value: type,
-                                                child: Text(
-                                                  type,
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 16.sp,
-                                                    color: Colors.black,
+                                        items:
+                                            [
+                                                  'Historical Tours',
+                                                  'Adventure',
+                                                  'Cultural',
+                                                  'Nature & Wildlife',
+                                                ]
+                                                .map(
+                                                  (type) => DropdownMenuItem(
+                                                    value: type,
+                                                    child: Text(
+                                                      type,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 16.sp,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
+                                                )
+                                                .toList(),
                                         onChanged: (value) {
                                           if (value != null) {
-                                            controller.setSpecialization(
-                                              value,
-                                            );
+                                            controller.setSpecialization(value);
                                           }
                                         },
                                         icon: Icon(
@@ -857,60 +884,76 @@ class CreateAccountView extends StatelessWidget {
                                   Wrap(
                                     spacing: 12.w,
                                     runSpacing: 12.h,
-                                    children: [
-                                      'Arabic',
-                                      'English',
-                                      'French',
-                                      'Spanish',
-                                    ]
-                                        .map(
-                                          (language) => Obx(
-                                            () => GestureDetector(
-                                              onTap: () => controller
-                                                  .toggleLanguage(language),
-                                              child: Container(
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 16.w,
-                                                  vertical: 10.h,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: controller
-                                                          .languagesSpoken
-                                                          .contains(language)
-                                                      ? const Color(0xFF00A86B)
-                                                      : Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          8.r),
-                                                  border: Border.all(
-                                                    color: controller
-                                                            .languagesSpoken
-                                                            .contains(language)
-                                                        ? const Color(
-                                                            0xFF00A86B)
-                                                        : const Color(
-                                                            0xFFE0E0E0),
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  language,
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 14.sp,
-                                                    color: controller
-                                                            .languagesSpoken
-                                                            .contains(language)
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                                    fontWeight:
-                                                        FontWeight.w500,
+                                    children:
+                                        [
+                                              'Arabic',
+                                              'English',
+                                              'French',
+                                              'Spanish',
+                                            ]
+                                            .map(
+                                              (language) => Obx(
+                                                () => GestureDetector(
+                                                  onTap: () => controller
+                                                      .toggleLanguage(language),
+                                                  child: Container(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 16.w,
+                                                          vertical: 10.h,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          controller
+                                                              .languagesSpoken
+                                                              .contains(
+                                                                language,
+                                                              )
+                                                          ? const Color(
+                                                              0xFF00A86B,
+                                                            )
+                                                          : Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8.r,
+                                                          ),
+                                                      border: Border.all(
+                                                        color:
+                                                            controller
+                                                                .languagesSpoken
+                                                                .contains(
+                                                                  language,
+                                                                )
+                                                            ? const Color(
+                                                                0xFF00A86B,
+                                                              )
+                                                            : const Color(
+                                                                0xFFE0E0E0,
+                                                              ),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      language,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 14.sp,
+                                                        color:
+                                                            controller
+                                                                .languagesSpoken
+                                                                .contains(
+                                                                  language,
+                                                                )
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
+                                            )
+                                            .toList(),
                                   ),
                                 ],
                               )
@@ -1028,10 +1071,7 @@ class _PasswordRuleItem extends StatelessWidget {
   final String label;
   final bool isValid;
 
-  const _PasswordRuleItem({
-    required this.label,
-    required this.isValid,
-  });
+  const _PasswordRuleItem({required this.label, required this.isValid});
 
   @override
   Widget build(BuildContext context) {
@@ -1042,9 +1082,7 @@ class _PasswordRuleItem extends StatelessWidget {
           Icon(
             isValid ? Icons.check_circle : Icons.radio_button_unchecked,
             size: 18.sp,
-            color: isValid
-                ? const Color(0xFF00A86B)
-                : const Color(0xFF999999),
+            color: isValid ? const Color(0xFF00A86B) : const Color(0xFF999999),
           ),
           SizedBox(width: 8.w),
           Expanded(

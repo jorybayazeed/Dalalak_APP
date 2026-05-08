@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tour_guide/dashboard/views/dashboard_view.dart';
 import 'package:tour_app/view/main/tour_guide/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tour_guide/tours/controllers/guide_tours_controller.dart';
@@ -146,6 +147,7 @@ class _TourCard extends StatelessWidget {
     final id = (tour['id'] ?? '').toString();
     final title = (tour['title'] ?? '').toString();
     final destination = (tour['destination'] ?? '').toString();
+    final startTime = (tour['startTime'] ?? '').toString();
 
     return Stack(
       children: [
@@ -178,6 +180,126 @@ class _TourCard extends StatelessWidget {
                   fontWeight: FontWeight.w400,
                 ),
               ),
+              SizedBox(height: 8.h),
+              Obx(() {
+                final weather = controller.weatherByTourId[id];
+                final level = weather?.tripRecommendation.level;
+
+                String label;
+                Color bg;
+                Color fg;
+
+                switch (level) {
+                  case WeatherRiskLevel.danger:
+                    label = 'Weather: DANGER';
+                    bg = const Color(0xFFC62828);
+                    fg = Colors.white;
+                    break;
+                  case WeatherRiskLevel.warning:
+                    label = 'Weather: ALERT';
+                    bg = const Color(0xFFEF6C00);
+                    fg = Colors.white;
+                    break;
+                  case WeatherRiskLevel.caution:
+                    label = 'Weather: CAUTION';
+                    bg = const Color(0xFFF9A825);
+                    fg = Colors.black;
+                    break;
+                  case WeatherRiskLevel.normal:
+                    label = 'Weather: SAFE';
+                    bg = const Color(0xFF2E7D32);
+                    fg = Colors.white;
+                    break;
+                  default:
+                    label = 'Weather: CHECKING';
+                    bg = const Color(0xFF546E7A);
+                    fg = Colors.white;
+                }
+
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(999.r),
+                  ),
+                  child: Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w800,
+                      color: fg,
+                    ),
+                  ),
+                );
+              }),
+              if (startTime.trim().isNotEmpty) ...[
+                SizedBox(height: 4.h),
+                Text(
+                  'Start: $startTime',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF666666),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              SizedBox(height: 10.h),
+              Obx(() {
+                final weather = controller.weatherByTourId[id];
+                if (weather == null ||
+                    weather.tripRecommendation.level == WeatherRiskLevel.normal) {
+                  return const SizedBox.shrink();
+                }
+
+                final rec = weather.tripRecommendation;
+                Color color;
+                switch (rec.level) {
+                  case WeatherRiskLevel.caution:
+                    color = const Color(0xFFF9A825);
+                    break;
+                  case WeatherRiskLevel.warning:
+                    color = const Color(0xFFEF6C00);
+                    break;
+                  case WeatherRiskLevel.danger:
+                    color = const Color(0xFFC62828);
+                    break;
+                  case WeatherRiskLevel.normal:
+                    color = const Color(0xFF2E7D32);
+                    break;
+                }
+
+                return Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(10.w),
+                  margin: EdgeInsets.only(bottom: 10.h),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(color: color.withOpacity(0.35)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        rec.title,
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        rec.message,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          color: const Color(0xFF3F3F3F),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
               SizedBox(height: 10.h),
 
               /// Rating

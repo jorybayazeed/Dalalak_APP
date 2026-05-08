@@ -9,14 +9,17 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tour_app/services/gamification_service.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/home_controller.dart';
 import 'package:tour_app/view/main/tourist/home/controllers/tourist_notifications_controller.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/bottom_navigation_bar.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/profile_dropdown.dart';
 import 'package:tour_app/view/main/tourist/shared/widgets/rate_tour_dialog.dart';
 import 'package:tour_app/view/main/tourist/home/views/about_us_view.dart';
+import 'package:tour_app/view/main/tourist/explore/views/package_details_view.dart';
 import 'package:tour_app/view/main/tourist/home/views/privacy_policy_view.dart';
 import 'package:tour_app/view/main/tourist/home/views/support_view.dart';
+import 'package:tour_app/view/shared/live_translation/views/live_translation_view.dart';
 
 import 'Tourist_notifications_view.dart';
 
@@ -53,9 +56,21 @@ class TouristHomeView extends StatelessWidget {
                         Get.to(() => const PrivacyPolicyView());
                       } else if (value == 'support') {
                         Get.to(() => const SupportView());
+                      } else if (value == 'live_translation') {
+                        controller.openLiveTranslation();
                       }
                     },
                     itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'live_translation',
+                        child: Row(
+                          children: [
+                            Icon(Icons.record_voice_over_outlined),
+                            SizedBox(width: 8.w),
+                            Text('Live Translation'),
+                          ],
+                        ),
+                      ),
                       PopupMenuItem(
                         value: 'about',
                         child: Row(
@@ -424,7 +439,65 @@ class TouristHomeView extends StatelessWidget {
                         },
                       ),
                     ),
+                    SizedBox(height: 12.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18.w),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48.h,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Get.to(
+                            () => const LiveTranslationView(role: 'tourist'),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D8A6A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14.r),
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.record_voice_over,
+                            color: Colors.white,
+                            size: 18.sp,
+                          ),
+                          label: Text(
+                            'Speech to Text',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     SizedBox(height: 24.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18.w),
+                      child: Obx(() {
+                        final weather = controller.todayWeather.value;
+                        if (controller.isWeatherLoading.value && weather == null) {
+                          return Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(16.w),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14.r),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+
+                        if (weather == null) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return _buildSmartWeatherAssistant(weather);
+                      }),
+                    ),
+                    SizedBox(height: 20.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 18.w),
                       child: Column(
@@ -459,6 +532,8 @@ class TouristHomeView extends StatelessWidget {
                                     (tour['tourId'] as String?) ?? '';
                                 final title = (tour['title'] as String?) ?? '';
                                 final date = (tour['date'] as String?) ?? '';
+                                final startTime =
+                                  (tour['startTime'] as String?) ?? '';
                                 final guide = (tour['guide'] as String?) ?? '';
                                 final totalActivities =
                                     (tour['totalActivities'] as int?) ?? 0;
@@ -548,6 +623,36 @@ class TouristHomeView extends StatelessWidget {
                                             ),
                                           ],
                                         ),
+                                        if (startTime.trim().isNotEmpty) ...[
+                                          SizedBox(height: 8.h),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.access_time_rounded,
+                                                size: 16,
+                                                color: Color(0xFF6B6B6B),
+                                              ),
+                                              SizedBox(width: 6.w),
+                                              Text(
+                                                startTime,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.sp,
+                                                  color: const Color(0xFF6B6B6B),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                        SizedBox(height: 10.h),
+                                        Obx(() {
+                                          final assessment =
+                                              controller.weatherByTourId[tourId];
+                                          if (assessment == null) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return _buildTourWeatherAlert(assessment);
+                                        }),
                                         SizedBox(height: 12.h),
                                         Row(
                                           children: [
@@ -777,9 +882,22 @@ class TouristHomeView extends StatelessWidget {
                                                       children: [
                                                         TileLayer(
                                                           urlTemplate:
-                                                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                              'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                                                          subdomains: const [
+                                                            'a',
+                                                            'b',
+                                                            'c',
+                                                            'd',
+                                                          ],
                                                           userAgentPackageName:
                                                               'tour_app',
+                                                          tileProvider:
+                                                              NetworkTileProvider(
+                                                            headers: const {
+                                                              'Accept':
+                                                                  'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                                                            },
+                                                          ),
                                                         ),
                                                         if (tourMarkers.isNotEmpty)
                                                           MarkerLayer(
@@ -1475,52 +1593,182 @@ class TouristHomeView extends StatelessWidget {
                             }
                             return Column(
                               children: controller.recommendedTours.map((tour) {
-                                return Container(
-                                  margin: EdgeInsets.only(bottom: 12.h),
-                                  padding: EdgeInsets.all(16.w),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.explore,
-                                        color: const Color(0xFF00A86B),
-                                        size: 24.sp,
+                                final isAutoAdjusted =
+                                  tour['plannerAutoAdjusted'] == true;
+                                final hasWeatherWarning =
+                                  tour['plannerWeatherWarning'] == true;
+                                final weatherMsg =
+                                  (tour['plannerWeatherMessage'] ?? '')
+                                    .toString();
+                                final originalTour =
+                                  (tour['plannerOriginalTourTitle'] ?? '')
+                                    .toString();
+
+                                return InkWell(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  onTap: () {
+                                    final packageId =
+                                        ((tour['id'] ?? tour['tourId'] ?? '')
+                                                .toString())
+                                            .trim();
+                                    if (packageId.isEmpty) {
+                                      Get.snackbar(
+                                        'Details unavailable',
+                                        'This tour cannot be opened right now.',
+                                      );
+                                      return;
+                                    }
+
+                                    Get.to(
+                                      () => PackageDetailsView(
+                                        packageId: packageId,
+                                        showBookingButton: true,
                                       ),
-                                      SizedBox(width: 12.w),
-                                      Expanded(
-                                        child: Column(
+                                    );
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.only(bottom: 12.h),
+                                    padding: EdgeInsets.all(16.w),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.explore,
+                                          color: const Color(0xFF00A86B),
+                                          size: 24.sp,
+                                        ),
+                                        SizedBox(width: 12.w),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                tour['tourTitle'] ?? '',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 16.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4.h),
+                                              Text(
+                                                tour['destination'] ?? '',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14.sp,
+                                                  color: const Color(0xFF666666),
+                                                ),
+                                              ),
+                                              if (isAutoAdjusted ||
+                                                  hasWeatherWarning) ...[
+                                                SizedBox(height: 6.h),
+                                                Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 8.w,
+                                                    vertical: 4.h,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: isAutoAdjusted
+                                                        ? const Color(0xFFE3F2FD)
+                                                        : const Color(0xFFFFF3E0),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8.r,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    isAutoAdjusted
+                                                        ? 'AI Planner adjusted to indoor due to weather'
+                                                        : 'Weather risk detected for this plan',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 10.sp,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: isAutoAdjusted
+                                                          ? const Color(
+                                                              0xFF0D47A1,
+                                                            )
+                                                          : const Color(
+                                                              0xFFE65100,
+                                                            ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                              if (isAutoAdjusted &&
+                                                  originalTour.isNotEmpty) ...[
+                                                SizedBox(height: 4.h),
+                                                Text(
+                                                  'Original plan: $originalTour',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 11.sp,
+                                                    color: const Color(
+                                                      0xFF4A4A4A,
+                                                    ),
+                                                    fontWeight:
+                                                        FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                              if (weatherMsg.isNotEmpty) ...[
+                                                SizedBox(height: 4.h),
+                                                Text(
+                                                  weatherMsg,
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 11.sp,
+                                                    color: const Color(
+                                                      0xFF6A6A6A,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                              CrossAxisAlignment.end,
                                           children: [
                                             Text(
-                                              tour['tourTitle'] ?? '',
+                                              '${tour['price']} SAR',
                                               style: GoogleFonts.inter(
-                                                fontSize: 16.sp,
+                                                fontSize: 14.sp,
                                                 fontWeight: FontWeight.w600,
                                               ),
                                             ),
-                                            SizedBox(height: 4.h),
-                                            Text(
-                                              tour['destination'] ?? '',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14.sp,
-                                                color: const Color(0xFF666666),
-                                              ),
+                                            SizedBox(height: 6.h),
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  'Details',
+                                                  style: GoogleFonts.inter(
+                                                    color: const Color(
+                                                      0xFF00A86B,
+                                                    ),
+                                                    fontSize: 11.sp,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 3.w),
+                                                Icon(
+                                                  Icons.arrow_forward_ios,
+                                                  size: 10.sp,
+                                                  color: const Color(
+                                                    0xFF00A86B,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      Text(
-                                        '${tour['price']} SAR',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 );
                               }).toList(),
@@ -1539,6 +1787,200 @@ class TouristHomeView extends StatelessWidget {
         ),
       ),
     );
+  }
+  Widget _buildSmartWeatherAssistant(SmartWeatherAssessment weather) {
+    final snapshot = weather.current;
+    final recommendation = weather.currentRecommendation;
+    final color = _alertColor(recommendation.level);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.wb_sunny_outlined, color: color),
+              SizedBox(width: 8.w),
+              Text(
+                'Smart Weather Assistant',
+                style: GoogleFonts.inter(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          if (snapshot != null)
+            Text(
+              '${weather.city}: ${snapshot.temperatureC.toStringAsFixed(0)}°C • Humidity ${snapshot.humidity}% • Rain ${snapshot.precipitationProbability}%',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF4A4A4A),
+              ),
+            ),
+          SizedBox(height: 8.h),
+          Text(
+            recommendation.message,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: const Color(0xFF4A4A4A),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          ...recommendation.tips.take(3).map(
+            (tip) => Padding(
+              padding: EdgeInsets.only(bottom: 3.h),
+              child: Text(
+                '• $tip',
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTourWeatherAlert(SmartWeatherAssessment assessment) {
+    final rec = assessment.tripRecommendation;
+    final trip = assessment.tripForecast;
+    final quickTips = _buildTripQuickTips(assessment);
+    final color = _alertColor(rec.level);
+
+    if (rec.level == WeatherRiskLevel.normal) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            rec.title,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          if (trip != null) ...[
+            SizedBox(height: 4.h),
+            Text(
+              'Forecast: ${trip.temperatureC.toStringAsFixed(0)}°C • Rain ${trip.precipitationProbability}% • Wind ${trip.windSpeedKmH.toStringAsFixed(0)} km/h',
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                color: const Color(0xFF4A4A4A),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          SizedBox(height: 4.h),
+          Text(
+            rec.message,
+            style: GoogleFonts.inter(
+              fontSize: 11.sp,
+              color: const Color(0xFF4A4A4A),
+            ),
+          ),
+          if (quickTips.isNotEmpty) ...[
+            SizedBox(height: 6.h),
+            Text(
+              'Quick tips for this trip:',
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            SizedBox(height: 4.h),
+            ...quickTips.map(
+              (tip) => Padding(
+                padding: EdgeInsets.only(bottom: 2.h),
+                child: Text(
+                  '• $tip',
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF4A4A4A),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<String> _buildTripQuickTips(SmartWeatherAssessment assessment) {
+    final trip = assessment.tripForecast;
+    final rec = assessment.tripRecommendation;
+    final tips = <String>[];
+
+    if (trip != null) {
+      if (trip.temperatureC >= 38) {
+        tips.add(
+          'Very hot weather expected. Carry extra water and avoid midday sun.',
+        );
+      } else if (trip.temperatureC <= 8) {
+        tips.add(
+          'Cold weather expected. Wear warm layers and keep the trip short outdoors.',
+        );
+      }
+
+      if (trip.precipitationProbability >= 55 || trip.weatherCode >= 61) {
+        tips.add(
+          'Rain is likely. Bring an umbrella and shoes suitable for wet roads.',
+        );
+      }
+
+      if (trip.windSpeedKmH >= 35) {
+        tips.add(
+          'Strong wind expected. Avoid exposed open areas when possible.',
+        );
+      }
+    }
+
+    for (final tip in rec.tips) {
+      if (tips.length >= 3) break;
+      if (!tips.contains(tip)) {
+        tips.add(tip);
+      }
+    }
+
+    return tips.take(3).toList();
+  }
+
+  Color _alertColor(WeatherRiskLevel level) {
+    switch (level) {
+      case WeatherRiskLevel.normal:
+        return const Color(0xFF2E7D32);
+      case WeatherRiskLevel.caution:
+        return const Color(0xFFF9A825);
+      case WeatherRiskLevel.warning:
+        return const Color(0xFFEF6C00);
+      case WeatherRiskLevel.danger:
+        return const Color(0xFFC62828);
+    }
   }
 }
 

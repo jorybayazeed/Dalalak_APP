@@ -21,7 +21,7 @@ class ProfileView extends StatelessWidget {
     dashboardController.currentBottomNavIndex.value = 4;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0E8),
+      backgroundColor: const Color(0xFFF5F5F5),
       bottomNavigationBar: const TourGuideBottomNavigationBar(),
       body: SafeArea(
         child: Column(

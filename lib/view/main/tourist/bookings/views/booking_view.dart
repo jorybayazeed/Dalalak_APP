@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tour_app/services/gamification_service.dart';
+import 'package:tour_app/services/guide_matching_service.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/booking_success_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -27,6 +29,13 @@ class _BookingViewState extends State<BookingView> {
   final TextEditingController cvvController = TextEditingController();
 
   int _guests = 1;
+  SmartWeatherAssessment? _weatherAssessment;
+  bool _isCheckingWeather = false;
+
+  // Smart Guide Matching
+  List<GuideMatch> _suggestedGuides = [];
+  bool _isLoadingGuides = false;
+  bool _guidesExpanded = false;
 
   double _parsePrice(dynamic v) {
     if (v is num) return v.toDouble();
@@ -117,10 +126,125 @@ class _BookingViewState extends State<BookingView> {
         });
       }
     });
+    _loadSmartWeather();
+    _loadSmartGuides();
+  }
+
+  Future<void> _loadSmartGuides() async {
+    final tour = widget.tour;
+    final guideId = (tour['guideId'] ?? '').toString();
+    final destination = (tour['destination'] ?? '').toString();
+    final activityType = (tour['activityType'] ?? '').toString();
+    final budget = _parsePrice(tour['price']);
+
+    // استرداد لغات السائح من ملفه الشخصي
+    List<String> touristLangs = [];
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser?.uid)
+          .get();
+      final d = userDoc.data() ?? {};
+      final raw = d['languages'] ?? d['languagesSpoken'] ?? d['preferredLanguages'];
+      if (raw is List) touristLangs = raw.map((e) => e.toString()).toList();
+    } catch (_) {}
+
+    setState(() => _isLoadingGuides = true);
+    try {
+      final service = Get.find<GuideMatchingService>();
+      final results = await service.findBestGuides(
+        GuideMatchRequest(
+          tourId: (tour['id'] ?? '').toString(),
+          destination: destination,
+          activityType: activityType,
+          budget: budget,
+          tripType: '',
+          preferredLanguages: touristLangs,
+          guideId: guideId,
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _suggestedGuides = results);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isLoadingGuides = false);
+    }
+  }
+
+  Future<void> _loadSmartWeather() async {
+    final destination = (widget.tour['destination'] ?? '').toString();
+    if (destination.trim().isEmpty) return;
+
+    final weatherService = Get.find<WeatherService>();
+    final availableDates = (widget.tour['availableDates'] ?? '').toString();
+    final startTime = (widget.tour['startTime'] ?? '').toString();
+    final tripAt = weatherService.inferTourDateTime(
+      availableDates: availableDates,
+      startTime: startTime,
+    );
+
+    setState(() {
+      _isCheckingWeather = true;
+    });
+
+    try {
+      final result = await weatherService.evaluateSmartWeather(
+        cityName: destination,
+        tripDateTime: tripAt,
+        isOutdoor: true,
+      );
+      if (!mounted) return;
+      setState(() {
+        _weatherAssessment = result;
+      });
+    } catch (_) {
+      // Ignore weather load failure on booking screen.
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isCheckingWeather = false;
+      });
+    }
+  }
+
+  Future<bool> _confirmWeatherRiskIfNeeded() async {
+    final weather = _weatherAssessment;
+    if (weather == null) return true;
+
+    final level = weather.tripRecommendation.level;
+    if (level == WeatherRiskLevel.normal || level == WeatherRiskLevel.caution) {
+      return true;
+    }
+
+    final rec = weather.tripRecommendation;
+
+    final shouldContinue = await Get.dialog<bool>(
+      AlertDialog(
+        title: Text(rec.title),
+        content: Text(
+          '${rec.message}\n\nDo you want to continue booking anyway?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel booking'),
+          ),
+          ElevatedButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    return shouldContinue == true;
   }
 
   Future<void> _confirmBooking() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final canContinue = await _confirmWeatherRiskIfNeeded();
+    if (!canContinue) return;
 
     final user = FirebaseAuth.instance.currentUser;
 
@@ -269,6 +393,7 @@ class _BookingViewState extends State<BookingView> {
             if (discountPercent > 0) 'discountPercent': discountPercent,
             if (rewardId != null) 'appliedRewardId': rewardId,
             'availableDates': widget.tour['availableDates'],
+            'startTime': widget.tour['startTime'] ?? '',
             'durationValue': widget.tour['durationValue'],
             'durationUnit': widget.tour['durationUnit'],
             'guests': safeGuests,
@@ -445,7 +570,7 @@ class _BookingViewState extends State<BookingView> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF5F5F5),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
         title: Text(
@@ -538,6 +663,22 @@ class _BookingViewState extends State<BookingView> {
                   'Available Dates: ${widget.tour['availableDates'] ?? ''}',
                   style: GoogleFonts.inter(fontSize: 14.sp),
                 ),
+                if ((widget.tour['startTime'] ?? '').toString().trim().isNotEmpty) ...[
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Start Time: ${widget.tour['startTime']}',
+                    style: GoogleFonts.inter(fontSize: 14.sp),
+                  ),
+                ],
+                SizedBox(height: 12.h),
+                if (_isCheckingWeather)
+                  const Center(child: CircularProgressIndicator())
+                else if (_weatherAssessment != null)
+                  _buildWeatherAlertCard(_weatherAssessment!),
+                SizedBox(height: 16.h),
+
+                // ─── Smart Guide Matching ───
+                _buildGuideMatchingCard(),
                 SizedBox(height: 24.h),
 
                 Row(
@@ -715,6 +856,364 @@ class _BookingViewState extends State<BookingView> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGuideMatchingCard() {
+    if (_isLoadingGuides) {
+      return Container(
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12.w),
+            Text(
+              'Finding best guides for you…',
+              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_suggestedGuides.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: const Color(0xFF00A86B).withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _guidesExpanded = !_guidesExpanded),
+            borderRadius: BorderRadius.circular(14.r),
+            child: Padding(
+              padding: EdgeInsets.all(14.w),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: const Color(0xFF00A86B),
+                      size: 18.sp,
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Smart Guide Suggestions',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          'AI picked ${_suggestedGuides.length} guides that match your trip',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _guidesExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_guidesExpanded) ...[
+            const Divider(height: 1),
+            ..._suggestedGuides.map((guide) => _buildGuideCard(guide)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideCard(GuideMatch guide) {
+    final initial = guide.guideName.isNotEmpty
+        ? guide.guideName[0].toUpperCase()
+        : 'G';
+    final matchPct = guide.matchScore.toInt();
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 4.h),
+      child: Container(
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9F9F9),
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Avatar
+            CircleAvatar(
+              radius: 24.r,
+              backgroundColor: const Color(0xFFE8F5E9),
+              child: Text(
+                initial,
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF00A86B),
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          guide.guideName,
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      // Match badge
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 3.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: matchPct >= 70
+                              ? const Color(0xFFE8F5E9)
+                              : const Color(0xFFFFF8E1),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          '$matchPct% match',
+                          style: GoogleFonts.inter(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w700,
+                            color: matchPct >= 70
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFF57F17),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  // Rating & experience
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: Colors.amber, size: 13.sp),
+                      SizedBox(width: 3.w),
+                      Text(
+                        guide.rating > 0
+                            ? guide.rating.toStringAsFixed(1)
+                            : 'New',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      if (guide.reviews > 0) ...[
+                        Text(
+                          ' (${guide.reviews})',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                      SizedBox(width: 10.w),
+                      if (guide.yearsOfExperience > 0) ...[
+                        Icon(
+                          Icons.work_outline,
+                          size: 12.sp,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(width: 3.w),
+                        Text(
+                          '${guide.yearsOfExperience}y exp',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  SizedBox(height: 6.h),
+                  // Match reasons chips
+                  Wrap(
+                    spacing: 4.w,
+                    runSpacing: 4.h,
+                    children: guide.matchReasons
+                        .take(3)
+                        .map(
+                          (reason) => Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 3.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE3F2FD),
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Text(
+                              reason,
+                              style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+                                color: const Color(0xFF1565C0),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeatherAlertCard(SmartWeatherAssessment weather) {
+    final rec = weather.tripRecommendation;
+    final forecast = weather.tripForecast;
+
+    Color color;
+    switch (rec.level) {
+      case WeatherRiskLevel.normal:
+        color = const Color(0xFF2E7D32);
+        break;
+      case WeatherRiskLevel.caution:
+        color = const Color(0xFFF9A825);
+        break;
+      case WeatherRiskLevel.warning:
+        color = const Color(0xFFEF6C00);
+        break;
+      case WeatherRiskLevel.danger:
+        color = const Color(0xFFC62828);
+        break;
+    }
+
+    final activityType = (widget.tour['activityType'] ?? '').toString();
+    final aiAlternative = WeatherRecommendation.suggestAiAlternative(
+      level: rec.level,
+      activityType: activityType,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            rec.title,
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          SizedBox(height: 6.h),
+          if (forecast != null)
+            Text(
+              'Forecast: ${forecast.temperatureC.toStringAsFixed(0)}°C • Rain ${forecast.precipitationProbability}% • Wind ${forecast.windSpeedKmH.toStringAsFixed(0)} km/h',
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF444444),
+              ),
+            ),
+          SizedBox(height: 6.h),
+          Text(
+            rec.message,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: const Color(0xFF444444),
+            ),
+          ),
+          // اقتراح بديل ذكي من AI
+          if (aiAlternative != null) ...[
+            SizedBox(height: 10.h),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: color.withOpacity(0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.auto_awesome, size: 14.sp, color: const Color(0xFF1565C0)),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI Alternative Suggestion',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1565C0),
+                          ),
+                        ),
+                        SizedBox(height: 3.h),
+                        Text(
+                          aiAlternative,
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            color: const Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

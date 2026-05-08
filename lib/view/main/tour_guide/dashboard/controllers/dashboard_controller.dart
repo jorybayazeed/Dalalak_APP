@@ -8,6 +8,7 @@ import 'package:tour_app/view/main/tour_guide/profile/views/profile_view.dart';
 import 'package:tour_app/view/main/tour_guide/chat/views/chat_view.dart';
 import 'package:tour_app/view/main/tour_guide/rewards/views/guide_rewards_view.dart';
 import 'package:tour_app/view/main/tour_guide/tours/views/guide_tours_view.dart';
+import 'package:tour_app/view/shared/live_translation/views/live_translation_view.dart';
 
 class DashboardController extends GetxController {
   final UserService _userService = Get.find<UserService>();
@@ -124,5 +125,9 @@ class DashboardController extends GetxController {
 
   void viewMyTours() {
     Get.to(() => const GuideToursView());
+  }
+
+  void openLiveTranslation() {
+    Get.to(() => const LiveTranslationView(role: 'guide'));
   }
 }

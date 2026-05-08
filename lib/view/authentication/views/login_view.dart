@@ -13,7 +13,7 @@ class LoginView extends StatelessWidget {
     final controller = Get.put(AuthenticationController());
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0E8),
+      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -49,11 +49,7 @@ class LoginView extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 40.h),
-              Image.asset(
-                'images/onboarding_logo.png',
-                width: 100.w,
-                height: 100.h,
-              ),
+              Image.asset('images/new_logo.png', width: 190.w, height: 190.h),
               SizedBox(height: 24.h),
               Text(
                 'Welcome Back',
@@ -168,20 +164,20 @@ class LoginView extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-  onTap: () {
-    controller.resetPassword(
-      controller.loginEmailController.text,
-    );
-  },
-  child: Text(
-    'Forgot Password?',
-    style: GoogleFonts.inter(
-      color: const Color(0xFF00A86B),
-      fontSize: 14.sp,
-      fontWeight: FontWeight.w600,
-    ),
-  ),
-),
+                        onTap: () {
+                          controller.resetPassword(
+                            controller.loginEmailController.text,
+                          );
+                        },
+                        child: Text(
+                          'Forgot Password?',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF00A86B),
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                     SizedBox(height: 32.h),
                     Obx(

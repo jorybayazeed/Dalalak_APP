@@ -8,12 +8,14 @@ import 'package:get_storage/get_storage.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:tour_app/services/gamification_service.dart';
 import 'package:tour_app/services/packages_service.dart';
+import 'package:tour_app/services/weather_service.dart';
 import 'package:tour_app/view/main/tourist/bookings/views/bookings_view.dart';
 import 'package:tour_app/view/main/tourist/explore/views/explore_view.dart';
 import 'package:tour_app/view/main/tourist/home/views/home_view.dart';
 import 'package:tour_app/view/main/tourist/profile/controllers/profile_controller.dart';
 import 'package:tour_app/view/main/tourist/profile/views/profile_view.dart';
 import 'package:tour_app/view/main/tourist/rewards/views/rewards_view.dart';
+import 'package:tour_app/view/shared/live_translation/views/live_translation_view.dart';
 
 
 class TouristHomeController extends GetxController {
@@ -43,6 +45,10 @@ class TouristHomeController extends GetxController {
   final currentTours = <Map<String, dynamic>>[].obs;
   final recommendedTours = <Map<String, dynamic>>[].obs;
   final userInterests = <String>[].obs;
+  final RxBool isWeatherLoading = false.obs;
+  final Rxn<SmartWeatherAssessment> todayWeather = Rxn<SmartWeatherAssessment>();
+  final RxMap<String, SmartWeatherAssessment> weatherByTourId =
+      <String, SmartWeatherAssessment>{}.obs;
 
   final mapCenter = const LatLng(24.7136, 46.6753).obs;
   final activityMapMarkers = <Map<String, dynamic>>[].obs;
@@ -310,6 +316,8 @@ class TouristHomeController extends GetxController {
     currentTours.clear();
     recommendedTours.clear();
     userInterests.clear();
+    weatherByTourId.clear();
+    todayWeather.value = null;
     userName.value = 'User';
 
     if (user == null) return;
@@ -319,6 +327,8 @@ class TouristHomeController extends GetxController {
     _recomputedPointsOnLogin = false;
 
     await loadUserName();
+
+    _refreshGeneralWeather(city: 'Riyadh');
 
     _bindUserGamification(uid: user.uid);
 
@@ -828,15 +838,185 @@ class TouristHomeController extends GetxController {
     return 0;
   }
 
-  void calculateRecommendations(List<Map<String, dynamic>> tours) {
+  bool _isLikelyOutdoorTour(Map<String, dynamic> tour) {
+    final combined = [
+      (tour['activityType'] ?? '').toString(),
+      (tour['tourTitle'] ?? '').toString(),
+      (tour['tourDescription'] ?? tour['description'] ?? '').toString(),
+    ].join(' ').toLowerCase();
+
+    const outdoorHints = <String>{
+      'beach',
+      'adventure',
+      'outdoor',
+      'nature',
+      'wildlife',
+      'safari',
+      'hiking',
+      'camping',
+      'photography',
+      'corniche',
+      'sea',
+      'desert',
+      'historical walk',
+      'walking tour',
+    };
+
+    for (final hint in outdoorHints) {
+      if (combined.contains(hint)) return true;
+    }
+
+    return false;
+  }
+
+  bool _isLikelyIndoorTour(Map<String, dynamic> tour) {
+    final combined = [
+      (tour['activityType'] ?? '').toString(),
+      (tour['tourTitle'] ?? '').toString(),
+      (tour['tourDescription'] ?? tour['description'] ?? '').toString(),
+    ].join(' ').toLowerCase();
+
+    const indoorHints = <String>{
+      'museum',
+      'mall',
+      'shopping',
+      'cultural center',
+      'center',
+      'indoor',
+      'exhibition',
+      'food',
+      'culinary',
+      'restaurant',
+      'relaxation',
+      'spa',
+      'entertainment',
+    };
+
+    for (final hint in indoorHints) {
+      if (combined.contains(hint)) return true;
+    }
+
+    return false;
+  }
+
+  DateTime? _inferRecommendationDateTime(Map<String, dynamic> tour) {
+    final availableDates = (tour['availableDates'] ?? '').toString();
+    final startTime = (tour['startTime'] ?? '').toString();
+    final weatherService = Get.find<WeatherService>();
+    return weatherService.inferTourDateTime(
+      availableDates: availableDates,
+      startTime: startTime,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _applyWeatherAwarePlanning(
+    List<Map<String, dynamic>> rankedTours,
+  ) async {
+    if (rankedTours.isEmpty) return <Map<String, dynamic>>[];
+
+    final weatherService = Get.find<WeatherService>();
+    final selected = <Map<String, dynamic>>[];
+    final usedIds = <String>{};
+
+    for (final rawTour in rankedTours) {
+      if (selected.length >= 3) break;
+
+      final tour = Map<String, dynamic>.from(rawTour);
+      final tourId = (tour['id'] ?? '').toString();
+      if (tourId.isNotEmpty && usedIds.contains(tourId)) {
+        continue;
+      }
+
+      final destination = (tour['destination'] ?? '').toString();
+      if (destination.trim().isEmpty) {
+        selected.add(tour);
+        if (tourId.isNotEmpty) usedIds.add(tourId);
+        continue;
+      }
+
+      final isOutdoor = _isLikelyOutdoorTour(tour);
+      final plannedAt = _inferRecommendationDateTime(tour);
+
+      SmartWeatherAssessment? assessment;
+      try {
+        assessment = await weatherService.evaluateSmartWeather(
+          cityName: destination,
+          tripDateTime: plannedAt,
+          isOutdoor: isOutdoor,
+        );
+      } catch (_) {
+        assessment = null;
+      }
+
+      final riskLevel = assessment?.tripRecommendation.level;
+      final needsReplacement =
+          isOutdoor &&
+          (riskLevel == WeatherRiskLevel.warning ||
+              riskLevel == WeatherRiskLevel.danger);
+
+      if (needsReplacement) {
+        Map<String, dynamic>? alternative;
+
+        for (final candidateRaw in rankedTours) {
+          final candidate = Map<String, dynamic>.from(candidateRaw);
+          final candidateId = (candidate['id'] ?? '').toString();
+          if (candidateId.isNotEmpty && usedIds.contains(candidateId)) continue;
+          if (candidateId == tourId) continue;
+
+          final sameDestination = (candidate['destination'] ?? '').toString() == destination;
+          if (!sameDestination) continue;
+          if (!_isLikelyIndoorTour(candidate)) continue;
+
+          alternative = candidate;
+          break;
+        }
+
+        if (alternative != null) {
+          alternative['plannerAutoAdjusted'] = true;
+          alternative['plannerOriginalTourTitle'] =
+              (tour['tourTitle'] ?? '').toString();
+          alternative['plannerWeatherMessage'] =
+              assessment?.tripRecommendation.message ??
+              'Weather risk detected for outdoor plans.';
+          alternative['plannerWeatherRiskLevel'] =
+              assessment?.tripRecommendation.level.name ?? 'warning';
+
+          final altId = (alternative['id'] ?? '').toString();
+          selected.add(alternative);
+          if (altId.isNotEmpty) usedIds.add(altId);
+          continue;
+        }
+
+        tour['plannerWeatherWarning'] = true;
+        tour['plannerWeatherMessage'] =
+            assessment?.tripRecommendation.message ??
+            'Weather risk detected. Consider rescheduling.';
+        tour['plannerWeatherRiskLevel'] =
+            assessment?.tripRecommendation.level.name ?? 'warning';
+      }
+
+      selected.add(tour);
+      if (tourId.isNotEmpty) usedIds.add(tourId);
+    }
+
+    return selected;
+  }
+
+  void calculateRecommendations(List<Map<String, dynamic>> tours) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      recommendedTours.value = tours.take(3).toList();
+      final weatherAware = await _applyWeatherAwarePlanning(
+        tours.map((e) => Map<String, dynamic>.from(e)).toList(),
+      );
+      recommendedTours.value = weatherAware.take(3).toList();
       return;
     }
 
-    FirebaseFirestore.instance.collection('users').doc(user.uid).get().then((doc) {
-      final data = doc.data() ?? <String, dynamic>{};
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = doc.data() ?? <String, dynamic>{};
 
       final normalizedInterests = List<String>.from(data['interests'] ?? [])
           .map((e) => _normalizeText(e).replaceAll('&', 'and'))
@@ -848,56 +1028,53 @@ class TouristHomeController extends GetxController {
       final normalizedPace =
           _normalizeText((data['travelPace'] ?? '').toString());
 
-      final List<Map<String, dynamic>> scoredTours = [];
+    final List<Map<String, dynamic>> scoredTours = [];
 
-      for (final originalTour in tours) {
-        final tour = Map<String, dynamic>.from(originalTour);
+    for (final originalTour in tours) {
+      final tour = Map<String, dynamic>.from(originalTour);
 
         final interestScore =
-            _calculateInterestScore(tour, normalizedInterests);
+          _calculateInterestScore(tour, normalizedInterests);
         final budgetScore = _calculateBudgetScore(tour, normalizedBudget);
         final paceScore = _calculatePaceScore(tour, normalizedPace);
 
-        final totalScore = interestScore + budgetScore + paceScore;
+      final totalScore = interestScore + budgetScore + paceScore;
 
-        final title = (tour['tourTitle'] ?? '').toString().trim();
-        final destination = (tour['destination'] ?? '').toString().trim();
-        final price = _readPriceValue(tour);
+      final title = (tour['tourTitle'] ?? '').toString().trim();
+      final destination = (tour['destination'] ?? '').toString().trim();
+      final price = _readPriceValue(tour);
 
-        if (title.isEmpty || title.length < 4) {
-          continue;
-        }
-
-        if (destination.isEmpty) {
-          continue;
-        }
-
-        if (price <= 0) {
-          continue;
-        }
-
-        tour['score'] = totalScore;
-        scoredTours.add(tour);
+      if (title.isEmpty || title.length < 4) {
+        continue;
       }
 
-      scoredTours.sort((a, b) {
-        final scoreCompare = (b['score'] ?? 0).compareTo(a['score'] ?? 0);
-        if (scoreCompare != 0) return scoreCompare;
-
-        final priceA = _readPriceValue(a);
-        final priceB = _readPriceValue(b);
-        return priceA.compareTo(priceB);
-      });
-
-      final matchedTours =
-          scoredTours.where((tour) => (tour['score'] ?? 0) > 0).toList();
-
-      if (matchedTours.isNotEmpty) {
-        recommendedTours.value = matchedTours.take(3).toList();
-      } else {
-        recommendedTours.value = scoredTours.take(3).toList();
+      if (destination.isEmpty) {
+        continue;
       }
+
+      if (price <= 0) {
+        continue;
+      }
+
+      tour['score'] = totalScore;
+      scoredTours.add(tour);
+    }
+
+    scoredTours.sort((a, b) {
+      final scoreCompare = (b['score'] ?? 0).compareTo(a['score'] ?? 0);
+      if (scoreCompare != 0) return scoreCompare;
+
+      final priceA = _readPriceValue(a);
+      final priceB = _readPriceValue(b);
+      return priceA.compareTo(priceB);
     });
+
+    final matchedTours =
+        scoredTours.where((tour) => (tour['score'] ?? 0) > 0).toList();
+
+    final rankedBase = matchedTours.isNotEmpty ? matchedTours : scoredTours;
+    final weatherAware = await _applyWeatherAwarePlanning(rankedBase);
+    recommendedTours.value = weatherAware.take(3).toList();
   }
 
   void changeBottomNavIndex(int index) {
@@ -923,6 +1100,10 @@ class TouristHomeController extends GetxController {
 
   void viewRewards() {
     Get.to(() => TouristRewardsView());
+  }
+
+  void openLiveTranslation() {
+    Get.to(() => const LiveTranslationView(role: 'tourist'));
   }
 
   Future<void> loadCurrentTours({
@@ -996,6 +1177,8 @@ class TouristHomeController extends GetxController {
         final tourId = (data['tourId'] ?? doc.id).toString();
         final title = (data['tourTitle'] ?? '').toString();
         final date = (data['availableDates'] ?? '').toString();
+        final destination = (data['destination'] ?? '').toString();
+        final startTime = (data['startTime'] ?? '').toString();
 
         final status = (data['status'] ?? 'Upcoming').toString().trim();
         final bookingSessionId = (data['sessionId'] ?? '').toString().trim();
@@ -1178,6 +1361,8 @@ class TouristHomeController extends GetxController {
           'tourId': tourId,
           'title': title,
           'date': date,
+          'destination': destination,
+          'startTime': startTime,
           'guide': guideName,
           'totalActivities': activities.length,
           'completedActivities': completedIds.length,
@@ -1227,8 +1412,70 @@ class TouristHomeController extends GetxController {
             .where((id) => id.isNotEmpty)
             .toSet(),
       );
+
+      _refreshSmartWeatherForTours(loaded);
     } catch (_) {
       Get.snackbar('Error', 'Failed to load current tours');
+    }
+  }
+
+  Future<void> _refreshSmartWeatherForTours(
+    List<Map<String, dynamic>> tours,
+  ) async {
+    if (tours.isEmpty) {
+      weatherByTourId.clear();
+      await _refreshGeneralWeather(city: 'Riyadh');
+      return;
+    }
+
+    final weatherService = Get.find<WeatherService>();
+    isWeatherLoading.value = true;
+
+    try {
+      final nextByTour = <String, SmartWeatherAssessment>{};
+
+      for (final tour in tours) {
+        final tourId = (tour['tourId'] ?? '').toString();
+        final destination = (tour['destination'] ?? '').toString();
+        final dates = (tour['date'] ?? '').toString();
+        final startTime = (tour['startTime'] ?? '').toString();
+        if (tourId.isEmpty || destination.isEmpty) continue;
+
+        final tripAt = weatherService.inferTourDateTime(
+          availableDates: dates,
+          startTime: startTime,
+        );
+
+        final assessment = await weatherService.evaluateSmartWeather(
+          cityName: destination,
+          tripDateTime: tripAt,
+          isOutdoor: true,
+        );
+
+        nextByTour[tourId] = assessment;
+      }
+
+      weatherByTourId.assignAll(nextByTour);
+
+      final firstDestination =
+          (tours.first['destination'] ?? 'Riyadh').toString();
+      await _refreshGeneralWeather(city: firstDestination);
+    } catch (_) {
+      // Ignore weather refresh failures to keep home loading resilient.
+    } finally {
+      isWeatherLoading.value = false;
+    }
+  }
+
+  Future<void> _refreshGeneralWeather({required String city}) async {
+    final weatherService = Get.find<WeatherService>();
+    try {
+      todayWeather.value = await weatherService.evaluateSmartWeather(
+        cityName: city,
+        isOutdoor: true,
+      );
+    } catch (_) {
+      // Ignore weather refresh failures.
     }
   }
 
