@@ -2,9 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tour_app/utils/url_opener.dart';
 import 'package:tour_app/view/onboarding/controllers/onboarding_controller.dart';
 import 'package:tour_app/view/authentication/views/create_account_view.dart';
 import 'package:tour_app/view/authentication/views/login_view.dart';
+
+const String _companyPortalUrl = String.fromEnvironment(
+  'DALALAK_COMPANY_PORTAL_URL',
+  defaultValue: 'http://localhost:8080',
+);
+
+Future<void> _openCompanyPortal() async {
+  try {
+    final ok = await openExternalUrl(_companyPortalUrl);
+    if (!ok) {
+      Get.snackbar('Error', 'Could not open the company portal');
+    }
+  } catch (e) {
+    Get.snackbar('Error', 'Could not open the company portal: $e');
+  }
+}
 
 class OnboardingSlides extends StatelessWidget {
   const OnboardingSlides({super.key});
@@ -228,6 +245,44 @@ class OnboardingSlides extends StatelessWidget {
                       'Login',
                       style: GoogleFonts.inter(
                         color: const Color(0xFF00A86B),
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 20.h),
+            Divider(color: Colors.grey.shade300, height: 1),
+            SizedBox(height: 16.h),
+            Text(
+              'Tourism Company?',
+              style: GoogleFonts.inter(
+                color: const Color(0xFF1F2937),
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Container(
+              width: double.infinity,
+              height: 56.h,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30.r),
+                border: Border.all(color: const Color(0xFFE0851F), width: 2),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openCompanyPortal,
+                  borderRadius: BorderRadius.circular(30.r),
+                  child: Center(
+                    child: Text(
+                      'Company Portal',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFFE0851F),
                         fontSize: 18.sp,
                         fontWeight: FontWeight.w600,
                       ),
