@@ -7,9 +7,14 @@ import 'package:tour_app/view/onboarding/controllers/onboarding_controller.dart'
 import 'package:tour_app/view/authentication/views/create_account_view.dart';
 import 'package:tour_app/view/authentication/views/login_view.dart';
 
+// Default URL — points to the live Firebase Hosting deployment so anyone
+// who clones the repo and runs the app gets a working "Company Portal"
+// button immediately, without needing a local website running.
+// Override at build time with:
+//   --dart-define=DALALAK_COMPANY_PORTAL_URL=http://localhost:8080
 const String _companyPortalUrl = String.fromEnvironment(
   'DALALAK_COMPANY_PORTAL_URL',
-  defaultValue: 'http://localhost:8080',
+  defaultValue: 'https://dalelak-b6812.web.app',
 );
 
 Future<void> _openCompanyPortal() async {
