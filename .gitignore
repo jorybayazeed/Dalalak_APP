@@ -45,3 +45,6 @@ app.*.map.json
 /android/app/release
 
 seed_firestore_data.txt
+
+# Claude Code working directory
+.claude/

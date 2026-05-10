@@ -1,0 +1,14 @@
+{
+  "name": "dalelak-cleanup-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "أدوات صيانة لقاعدة بيانات Dalelak على Firestore",
+  "scripts": {
+    "preview": "node cleanup-tours.js",
+    "interactive": "node cleanup-tours.js --interactive",
+    "cleanup": "node cleanup-tours.js --delete"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

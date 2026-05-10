@@ -1028,7 +1028,7 @@ Obx(() => Row(
                                   subdomains: const ['a', 'b', 'c', 'd'],
                                   userAgentPackageName: 'tour_app',
                                   tileProvider: NetworkTileProvider(
-                                    headers: const {
+                                    headers: {
                                       'Accept':
                                           'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                                     },
